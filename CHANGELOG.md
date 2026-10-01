@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+
+## [v1.2.0] - 2026-10-01
+
 - Tray app turns all monitors back on when the system switches the display signal back on (e.g. the mouse is moved after an idle timeout or at the lock screen), if all of them are off (setting, on by default). Monitors the lock hook turned on while the display signal was off get the command again then, since without a signal a monitor may acknowledge it but stay off. Windows: `GUID_CONSOLE_DISPLAY_STATE` power notifications; Linux: the screensaver's `ActiveChanged(false)`.
 
 - `build.py` names the executables like the release files, with platform and architecture (e.g. `dist/monitoggle-windows-x86_64.exe`, `dist/monitoggle-cli-linux-x86_64`), so local builds and releases match; CI no longer renames them.
