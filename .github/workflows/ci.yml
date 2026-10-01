@@ -1,0 +1,169 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Weekly, so newly published vulnerabilities in unchanged dependencies
+    # are noticed too (Mondays, 06:00 UTC).
+    - cron: "0 6 * * 1"
+
+# Read-only by default; only the jobs that publish (release, cleanup) get
+# write access, below.
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Install dependencies
+        run: uv sync --all-groups --all-extras
+
+      - name: Run tests
+        run: uv run pytest -q
+
+  licenses:
+    # Linux: its runtime dependencies are a superset of the Windows ones
+    # (python-xlib, pyudev, six on top).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Install runtime dependencies only
+        # Without the dev group: PyInstaller (GPL) is a build tool and is
+        # not shipped.
+        run: uv sync --no-dev --all-extras
+
+      - name: Check dependency licenses
+        # Everything shipped in the executables must be MIT-compatible when
+        # distributed as-is: permissive licenses, or LGPL (dynamically linked
+        # libraries such as Qt/PySide6).
+        run: >
+          uv run --no-sync --with pip-licenses
+          pip-licenses --from=mixed --partial-match
+          --allow-only="MIT;BSD;Apache;ISC;Python Software Foundation;PSF;Mozilla Public License 2.0;MPL-2.0;LGPL;GNU Lesser General Public License"
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Audit dependencies for known vulnerabilities
+        # Every locked package, incl. the GUI extra and the build tools
+        # (PyInstaller runs on the build machine), with pinned versions and
+        # hashes from uv.lock; checked against the PyPI/OSV advisory data.
+        run: |
+          uv export --all-extras --all-groups --no-emit-project \
+            --format requirements-txt -o requirements-audit.txt
+          uvx pip-audit -r requirements-audit.txt --disable-pip --require-hashes
+
+      - name: Lint (ruff)
+        # Rules: [tool.ruff] in pyproject.toml.
+        run: uvx ruff check .
+
+      - name: Scan the code (bandit)
+        # Settings and justified exceptions: [tool.bandit] in pyproject.toml.
+        run: uvx bandit -c pyproject.toml -r src build.py download_latest_release.py cleanup_dev_releases.py
+
+  build-linux:
+    needs: [test, licenses, security]
+    if: startsWith(github.ref, 'refs/tags/')
+    # Oldest available runner: the binary links against the build host's
+    # glibc, so building on an older one keeps it running on more distros.
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # tags for the version (git describe)
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Build executables
+        # CLI first: it is built before the GUI dependencies are installed.
+        # build.py names the files as the release assets.
+        run: uv run --no-project python build.py cli gui
+
+      - name: Upload executables
+        uses: actions/upload-artifact@v4
+        with:
+          name: monitoggle-linux
+          path: |
+            dist/monitoggle-linux-x86_64
+            dist/monitoggle-cli-linux-x86_64
+          if-no-files-found: error
+
+  build-windows:
+    needs: [test, licenses, security]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # tags for the version (git describe)
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Build executables
+        shell: pwsh
+        # CLI first: it is built before the GUI dependencies are installed.
+        # build.py names the files as the release assets.
+        run: python build.py cli gui
+
+      - name: Upload executables
+        uses: actions/upload-artifact@v4
+        with:
+          name: monitoggle-windows
+          path: |
+            dist/monitoggle-windows-x86_64.exe
+            dist/monitoggle-cli-windows-x86_64.exe
+          if-no-files-found: error
+
+  release:
+    needs: [build-linux, build-windows]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4  # for CHANGELOG.md
+
+      - name: Download executables
+        uses: actions/download-artifact@v4
+        with:
+          pattern: monitoggle-*
+          path: dist
+          merge-multiple: true
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            dist/monitoggle-windows-x86_64.exe dist/monitoggle-cli-windows-x86_64.exe \
+            dist/monitoggle-linux-x86_64 dist/monitoggle-cli-linux-x86_64 \
+            THIRD_PARTY_NOTICES.md \
+            --title "${{ github.ref_name }}" \
+            --notes-file CHANGELOG.md
+
+  cleanup-dev-releases:
+    needs: [release]
+    uses: ./.github/workflows/cleanup-dev-releases.yml
+    permissions:
+      contents: write

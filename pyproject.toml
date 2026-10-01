@@ -1,0 +1,63 @@
+[project]
+name = "monitoggle"
+# From the latest git tag (hatch-vcs), like the app's own version.
+dynamic = ["version"]
+description = "MoniToggle: turn individual monitors on and off via DDC/CI, from a tray app or the command line"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.11"
+dependencies = [
+    "monitorcontrol>=4.2.0",
+]
+
+[project.optional-dependencies]
+gui = [
+    "PySide6-Essentials>=6.8",
+    "python-xlib>=0.33; sys_platform == 'linux'",
+]
+
+[project.scripts]
+monitoggle-cli = "monitoggle.cli:main"
+
+[project.gui-scripts]
+monitoggle = "monitoggle.gui.app:main"
+
+[build-system]
+# hatchling >= 1.27: SPDX license expressions (license = "MIT").
+requires = ["hatchling>=1.27", "hatch-vcs>=0.4"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
+# Without tags (e.g. a shallow checkout) instead of failing.
+fallback-version = "0.0.0"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/monitoggle"]
+
+[tool.uv]
+# Reinstall the project when the version can have changed (new commit or
+# tag), so its metadata doesn't keep an old version.
+cache-keys = [{ file = "pyproject.toml" }, { git = { commit = true, tags = true } }]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+# Ruff's defaults (pyflakes, pycodestyle errors) plus bugbear: likely bugs,
+# not style. Set here so a user-level ruff config doesn't change the result.
+select = ["E4", "E7", "E9", "F", "B"]
+
+[tool.bandit]
+# B404 (subprocess is imported) and B603 (subprocess call without a shell):
+# every call here uses a fixed argument list, never a shell or user input.
+# Shell use (B602, B605) and everything else stays checked; the few
+# deliberate exceptions are marked "# nosec <id>" with a reason.
+skips = ["B404", "B603"]
+
+[dependency-groups]
+dev = [
+    "pygithub>=2.10.0",
+    "pyinstaller>=6.11",
+    "pytest>=9.1.1",
+]

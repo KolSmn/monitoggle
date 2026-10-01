@@ -1,0 +1,33 @@
+name: Clean up dev releases
+
+# Deletes dev releases and their tags once they are superseded: by a newer
+# dev release of the same version, or by the final release (see
+# cleanup_dev_releases.py). Runs daily, after each release from ci.yml, or
+# by hand.
+
+on:
+  schedule:
+    - cron: "0 5 * * *"  # daily, 05:00 UTC
+  workflow_call:
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: Only list what would be deleted
+        type: boolean
+        default: true
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4  # for the script
+
+      - name: Delete obsolete dev releases and tags
+        env:
+          GH_TOKEN: ${{ github.token }}
+          # schedule / workflow_call: no inputs, so this is empty (= really
+          # delete).
+          DRY_RUN: ${{ inputs.dry-run && '--dry-run' || '' }}
+        run: python3 cleanup_dev_releases.py $DRY_RUN
