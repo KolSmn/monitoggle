@@ -18,7 +18,7 @@ import pytest
 
 from monitoggle import cli, core
 from monitoggle.errors import UserError
-from monitoggle.gui import autostart, commands, config, hotkeys, i18n, resources
+from monitoggle.gui import autostart, commands, config, hotkeys, i18n, monitor_state, resources
 from monitoggle.gui import command_builder as cb
 from monitoggle.gui.config import Settings, Shortcut
 
@@ -237,10 +237,10 @@ def _with_func(parser, func):
 
 
 def test_monitor_state_label_and_ref():
-    m = commands.MonitorState("DP-2", 2, True, 2560, 1440, True, True)
+    m = monitor_state.MonitorState("DP-2", 2, True, 2560, 1440, True, True)
     assert m.ref == "2"
     assert m.label == "2: DP-2 (2560\u00d71440) \u2605"
-    unnumbered = commands.MonitorState("HDMI-1", None, False, 0, 0, False, None)
+    unnumbered = monitor_state.MonitorState("HDMI-1", None, False, 0, 0, False, None)
     assert unnumbered.ref == "HDMI-1"
     assert unnumbered.label == "HDMI-1"
 
@@ -264,15 +264,15 @@ def test_snapshot_reads_inputs_once_while_on(monkeypatch):
     monkeypatch.setattr(core, "get_power_mode", lambda m: modes[m.name])
     monkeypatch.setattr(core, "get_input_source", lambda m: 17)
     monkeypatch.setattr(core, "get_supported_inputs", supported)
-    commands.forget_inputs()
+    monitor_state.forget_inputs()
 
-    a, b = commands.snapshot()
+    a, b = monitor_state.snapshot()
     assert (a.input, a.inputs) == (17, [15, 17])
     assert (b.input, b.inputs) == (None, [])  # off: not queried
-    commands.snapshot()
+    monitor_state.snapshot()
     assert caps_reads == ["A"]  # cached
-    commands.forget_inputs()
-    commands.snapshot()
+    monitor_state.forget_inputs()
+    monitor_state.snapshot()
     assert caps_reads == ["A", "A"]
 
 
@@ -288,16 +288,16 @@ def test_snapshot_retries_failed_input_query(monkeypatch):
     monkeypatch.setattr(core, "get_power_mode", lambda _m: PowerMode.on)
     monkeypatch.setattr(core, "get_input_source", lambda _m: None)
     monkeypatch.setattr(core, "get_supported_inputs", lambda _m: results.pop(0))
-    commands.forget_inputs()
+    monitor_state.forget_inputs()
 
-    assert commands.snapshot()[0].inputs == []
-    assert commands.snapshot()[0].inputs == [15]
-    commands.forget_inputs()
+    assert monitor_state.snapshot()[0].inputs == []
+    assert monitor_state.snapshot()[0].inputs == [15]
+    monitor_state.forget_inputs()
 
 
 def test_command_presets_include_inputs():
     dialog_module = pytest.importorskip("monitoggle.gui.settings_dialog")
-    m = commands.MonitorState("DP-2", 2, True, 0, 0, True, True, 15, [15, 17, 0x1B])
+    m = monitor_state.MonitorState("DP-2", 2, True, 0, 0, True, True, 15, [15, 17, 0x1B])
     presets = dialog_module.command_presets([m])
     assert "cycle-input 2" in presets
     assert "cycle-input 2 --sources DP1,HDMI1" in presets
@@ -314,7 +314,7 @@ def _named(name="", **inputs):
 
 
 def test_monitor_state_with_name():
-    m = commands.MonitorState(
+    m = monitor_state.MonitorState(
         "DP-2", 2, True, 2560, 1440, True, True, settings=_named("Left")
     )
     assert m.ref == "Left"
@@ -324,7 +324,7 @@ def test_monitor_state_with_name():
 
 def test_monitor_state_active_inputs():
     s = _named(DP1=("work", True), HDMI1=("", False))
-    m = commands.MonitorState("A", 1, False, 0, 0, True, True, 15, [15, 17, 18], settings=s)
+    m = monitor_state.MonitorState("A", 1, False, 0, 0, True, True, 15, [15, 17, 18], settings=s)
     assert m.active_inputs == [15]
     m.on = False
     assert m.active_inputs == []  # no input menu for a monitor that is off
@@ -335,7 +335,7 @@ def test_command_presets_use_names_and_skip_inactive_inputs():
     from monitoggle.monitor_settings import MonitorSettingsFile
 
     s = _named("Left", DP1=("work", True), HDMI1=("private", True), HDMI2=("tv", False))
-    m = commands.MonitorState("A", 1, False, 0, 0, True, True, 15, [15, 17, 18], settings=s)
+    m = monitor_state.MonitorState("A", 1, False, 0, 0, True, True, 15, [15, 17, 18], settings=s)
     presets = dialog_module.command_presets([m])
     assert "toggle Left" in presets
     assert "cycle-input Left" in presets
@@ -389,8 +389,8 @@ def test_settings_dialog_monitor_names(monkeypatch):
     )
 
     states = [
-        commands.MonitorState("A", 1, True, 0, 0, True, True, 15, [15, 17]),
-        commands.MonitorState("B", 2, False, 0, 0, True, True, 15, [15, 17]),
+        monitor_state.MonitorState("A", 1, True, 0, 0, True, True, 15, [15, 17]),
+        monitor_state.MonitorState("B", 2, False, 0, 0, True, True, 15, [15, 17]),
     ]
     config = MonitorSettingsFile(
         {"A": _named(HDMI1=("tv", True)), "gone": _named("Old")}  # "gone": not connected
@@ -426,7 +426,7 @@ def test_settings_dialog_rejects_bad_names(monkeypatch):
     monkeypatch.setattr(
         dialog_module.QMessageBox, "warning", lambda *args: warnings.append(args[-1])
     )
-    states = [commands.MonitorState("A", 1, True, 0, 0, True, True)]
+    states = [monitor_state.MonitorState("A", 1, True, 0, 0, True, True)]
     dialog = dialog_module.SettingsDialog(Settings(), states)
     dialog._monitor_rows[0][1].setText("1")
     dialog.accept()
@@ -938,9 +938,9 @@ def _states():
     monitor 2 unnamed with announced inputs, monitor 3 without DDC/CI."""
     left = _named("Left", DP1=("work", True), HDMI1=("private", True), HDMI2=("", False))
     return [
-        commands.MonitorState("\\\\.\\DISPLAY1", 1, True, 0, 0, True, True, 15, [15, 17, 18], settings=left),
-        commands.MonitorState("\\\\.\\DISPLAY2", 2, False, 0, 0, True, True, 17, [15, 17]),
-        commands.MonitorState("\\\\.\\DISPLAY3", 3, False, 0, 0, False, None),
+        monitor_state.MonitorState("\\\\.\\DISPLAY1", 1, True, 0, 0, True, True, 15, [15, 17, 18], settings=left),
+        monitor_state.MonitorState("\\\\.\\DISPLAY2", 2, False, 0, 0, True, True, 17, [15, 17]),
+        monitor_state.MonitorState("\\\\.\\DISPLAY3", 3, False, 0, 0, False, None),
     ]
 
 

@@ -41,7 +41,8 @@ from ..version import get_version
 from . import autostart, hotkeys, i18n
 from .command_builder import describe as describe_command
 from .command_dialog import CommandDialog
-from .commands import MonitorState, cli_command_line, validate_command, validate_names
+from .commands import cli_command_line, validate_command, validate_names
+from .monitor_state import MonitorState
 from .config import Settings, Shortcut
 from .hotkey_listeners import unsupported_reason
 from .i18n import tr

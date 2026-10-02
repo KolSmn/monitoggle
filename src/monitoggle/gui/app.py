@@ -29,9 +29,10 @@ from PySide6.QtWidgets import QApplication, QMenu, QMessageBox, QSystemTrayIcon
 from .. import APP_NAME, DISPLAY_NAME, core, logs, monitor_settings
 from ..version import get_version
 from . import autostart, config, hotkeys, i18n, session_events
-from .commands import CommandResult, MonitorState, forget_inputs, run_command, snapshot
+from .commands import CommandResult, run_command
 from .hotkey_listeners import HotkeyManager, unsupported_reason
 from .i18n import tr
+from .monitor_state import MonitorState, forget_inputs, snapshot
 from .resources import MB, ResourceLogger, ResourceMeter
 from .settings_dialog import SettingsDialog
 

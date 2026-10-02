@@ -21,7 +21,7 @@ from PySide6.QtWidgets import (
 from ..core import ON_MIXED
 from ..monitor_settings import MonitorSettingsFile
 from . import command_builder as cb
-from .commands import MonitorState
+from .monitor_state import MonitorState
 from .i18n import tr
 
 

@@ -11,11 +11,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from .. import cli
 from ..core import OnMixed
 from ..models import ALL, PRIMARY
 from ..monitor_settings import MonitorSettingsFile
-from .commands import MonitorState, split_command
+from .commands import InvalidCommand, parse_command
+from .monitor_state import MonitorState
 from .i18n import N_, tr
 
 
@@ -153,8 +153,8 @@ def parse(command: str, settings: MonitorSettingsFile | None = None) -> CommandS
     """The choices for an existing command; None if it isn't one of ACTIONS
     or isn't valid (settings: the input names to accept, see cli)."""
     try:
-        args = cli.parse_command(split_command(command), settings)
-    except (cli.CommandLineError, SystemExit):
+        args = parse_command(command, settings)
+    except InvalidCommand:
         return None
     if args.action not in ACTIONS_BY_COMMAND:
         return None
