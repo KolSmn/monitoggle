@@ -324,7 +324,7 @@ def test_monitor_state_with_name():
 
 def test_monitor_state_active_inputs():
     s = _named(DP1=("work", True), HDMI1=("", False))
-    m = commands.MonitorState("A", 1, False, 0, 0, True, True, 15, [15, 17, 18], s)
+    m = commands.MonitorState("A", 1, False, 0, 0, True, True, 15, [15, 17, 18], settings=s)
     assert m.active_inputs == [15]
     m.on = False
     assert m.active_inputs == []  # no input menu for a monitor that is off
@@ -335,7 +335,7 @@ def test_command_presets_use_names_and_skip_inactive_inputs():
     from monitoggle.monitor_settings import MonitorSettingsFile
 
     s = _named("Left", DP1=("work", True), HDMI1=("private", True), HDMI2=("tv", False))
-    m = commands.MonitorState("A", 1, False, 0, 0, True, True, 15, [15, 17, 18], s)
+    m = commands.MonitorState("A", 1, False, 0, 0, True, True, 15, [15, 17, 18], settings=s)
     presets = dialog_module.command_presets([m])
     assert "toggle Left" in presets
     assert "cycle-input Left" in presets
@@ -938,7 +938,7 @@ def _states():
     monitor 2 unnamed with announced inputs, monitor 3 without DDC/CI."""
     left = _named("Left", DP1=("work", True), HDMI1=("private", True), HDMI2=("", False))
     return [
-        commands.MonitorState("\\\\.\\DISPLAY1", 1, True, 0, 0, True, True, 15, [15, 17, 18], left),
+        commands.MonitorState("\\\\.\\DISPLAY1", 1, True, 0, 0, True, True, 15, [15, 17, 18], settings=left),
         commands.MonitorState("\\\\.\\DISPLAY2", 2, False, 0, 0, True, True, 17, [15, 17]),
         commands.MonitorState("\\\\.\\DISPLAY3", 3, False, 0, 0, False, None),
     ]

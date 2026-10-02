@@ -1078,7 +1078,7 @@ def input_monitor(
     **kw,
 ) -> tuple[Monitor, FakeDdc]:
     ddc = FakeDdc(input_source=current, inputs=list(inputs), **kw)
-    m = Monitor(name, number, False, 1920, 1080, ddc, settings or MonitorSettings())
+    m = Monitor(name, number, False, 1920, 1080, ddc, settings=settings or MonitorSettings())
     return m, ddc
 
 

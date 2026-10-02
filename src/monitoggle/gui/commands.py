@@ -12,8 +12,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from .. import APP_NAME, CLI_NAME, cli, core
-from ..models import ALL, PRIMARY, Monitor, MonitorRef
-from ..monitor_settings import MonitorSettings, MonitorSettingsFile, is_input_source
+from ..models import ALL, PRIMARY, Monitor, MonitorInfo
+from ..monitor_settings import MonitorSettingsFile, is_input_source
 from .i18n import tr, tr_template
 
 logger = logging.getLogger(APP_NAME)
@@ -134,42 +134,13 @@ def run_command(command: str) -> CommandResult:
 
 
 @dataclass
-class MonitorState(MonitorRef):
-    name: str
-    number: int | None
-    primary: bool
-    width: int
-    height: int
+class MonitorState(MonitorInfo):
+    """A monitor as the tray app shows it: queried once, no DDC/CI handle."""
+
     has_ddc: bool
     on: bool | None  # None: unknown (no DDC/CI, or the query failed)
     input: int | None = None  # current input source, None: unknown
     inputs: list[int] = field(default_factory=list)  # supported; empty: unknown
-    settings: MonitorSettings = field(default_factory=MonitorSettings)
-
-    @property
-    def ref(self) -> str:
-        """Token that addresses this monitor in a command."""
-        if self.settings.name:
-            return self.settings.name
-        return str(self.number) if self.number is not None else self.name
-
-    @property
-    def device_label(self) -> str:
-        """E.g. "2: DP-2 (2560\u00d71440) \u2605" (without the user-given name)."""
-        parts = [f"{self.number}:" if self.number is not None else "", self.name]
-        if self.width and self.height:
-            parts.append(f"({self.width}\u00d7{self.height})")
-        if self.primary:
-            parts.append("\u2605")
-        return " ".join(p for p in parts if p)
-
-    @property
-    def label(self) -> str:
-        """E.g. "2: Left \u00b7 DP-2 (2560\u00d71440) \u2605"."""
-        if not self.settings.name:
-            return self.device_label
-        prefix = f"{self.number}: " if self.number is not None else ""
-        return prefix + self.settings.name + " \u00b7 " + self.device_label.removeprefix(prefix)
 
     @property
     def active_inputs(self) -> list[int]:
@@ -185,16 +156,7 @@ def _state(m: Monitor) -> MonitorState:
         current = core.get_input_source(m)
         inputs = _supported_inputs(m)
     return MonitorState(
-        name=m.name,
-        number=m.number,
-        primary=m.primary,
-        width=m.width,
-        height=m.height,
-        has_ddc=m.ddc is not None,
-        on=on,
-        input=current,
-        inputs=inputs,
-        settings=m.settings,
+        **m.info_fields(), has_ddc=m.ddc is not None, on=on, input=current, inputs=inputs
     )
 
 
