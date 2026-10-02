@@ -25,6 +25,15 @@ from .monitor_state import MonitorState
 from .i18n import tr
 
 
+def _add_checkable(widget: QListWidget, label: str, value: str, checked: bool) -> None:
+    """Adds a list item with a check box; value is its UserRole data."""
+    item = QListWidgetItem(label)
+    item.setData(Qt.ItemDataRole.UserRole, value)
+    item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+    item.setCheckState(Qt.CheckState.Checked if checked else Qt.CheckState.Unchecked)
+    widget.addItem(item)
+
+
 class CommandDialog(QDialog):
     """Choose an action, its monitors and options; command() is the result."""
 
@@ -69,11 +78,7 @@ class CommandDialog(QDialog):
             and not any(m.is_called(ref) for m in monitors)
         ]
         for ref, label in choices + extra:
-            item = QListWidgetItem(label)
-            item.setData(Qt.ItemDataRole.UserRole, ref)
-            item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
-            item.setCheckState(Qt.CheckState.Unchecked)
-            self.monitor_list.addItem(item)
+            _add_checkable(self.monitor_list, label, ref, checked=False)
         self._check_monitors(spec.monitors)
         self.monitor_label = QLabel(tr("Monitors:"))
         form.addRow(self.monitor_label, self.monitor_list)
@@ -196,13 +201,7 @@ class CommandDialog(QDialog):
         self.sources.blockSignals(True)
         self.sources.clear()
         for token, label in choices + extra:
-            item = QListWidgetItem(label)
-            item.setData(Qt.ItemDataRole.UserRole, token)
-            item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
-            item.setCheckState(
-                Qt.CheckState.Checked if token.lower() in wanted else Qt.CheckState.Unchecked
-            )
-            self.sources.addItem(item)
+            _add_checkable(self.sources, label, token, checked=token.lower() in wanted)
         self.sources.blockSignals(False)
 
     # --- result

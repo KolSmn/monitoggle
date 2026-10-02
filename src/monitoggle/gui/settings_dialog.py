@@ -80,6 +80,15 @@ def command_presets(monitors: list[MonitorState]) -> list[str]:
     return presets
 
 
+def _option(layout: QVBoxLayout, text: str, tooltip: str, checked: bool) -> QCheckBox:
+    """Adds a check box with an explanation as its tooltip."""
+    box = QCheckBox(text)
+    box.setToolTip(tooltip)
+    box.setChecked(checked)
+    layout.addWidget(box)
+    return box
+
+
 class SettingsDialog(QDialog):
     def __init__(
         self,
@@ -181,52 +190,44 @@ class SettingsDialog(QDialog):
         self.autostart.setChecked(autostart.is_supported() and autostart.is_enabled())
         general_layout.addWidget(self.autostart)
 
-        self.wake = QCheckBox(
+        self.wake = _option(
+            general_layout,
             tr(
                 "Turn all monitors back on before locking, logging off, "
                 "shutting down or sleeping, if all of them are off"
-            )
-        )
-        self.wake.setToolTip(
+            ),
             tr(
                 "At the lock and login screen the shortcuts don't work, and "
                 "some monitors can then only be woken with their power button. "
                 "Turning them back on is tried, but not guaranteed: you may "
                 "still have to switch a monitor off and on again with its "
                 "power button."
-            )
+            ),
+            settings.wake_before_session_end,
         )
-        self.wake.setChecked(settings.wake_before_session_end)
-        general_layout.addWidget(self.wake)
-
-        self.wake_on_startup = QCheckBox(
-            tr("Turn all monitors back on when MoniToggle starts, if all of them are off")
-        )
-        self.wake_on_startup.setToolTip(
+        self.wake_on_startup = _option(
+            general_layout,
+            tr("Turn all monitors back on when MoniToggle starts, if all of them are off"),
             tr(
                 "This is tried, but not guaranteed: if all monitors were switched "
                 "off when the system shut down or was locked, you may have to "
                 "switch a monitor off and on again with its power button."
-            )
+            ),
+            settings.wake_on_startup,
         )
-        self.wake_on_startup.setChecked(settings.wake_on_startup)
-        general_layout.addWidget(self.wake_on_startup)
-
-        self.wake_on_display_on = QCheckBox(
+        self.wake_on_display_on = _option(
+            general_layout,
             tr(
                 "Turn all monitors back on when the display wakes up (e.g. the "
                 "mouse is moved), if all of them are off"
-            )
-        )
-        self.wake_on_display_on.setToolTip(
+            ),
             tr(
                 "After the system has switched the display off (idle, lock "
                 "screen), monitors may miss being turned back on. When the "
                 "display signal returns, they get another try."
-            )
+            ),
+            settings.wake_on_display_on,
         )
-        self.wake_on_display_on.setChecked(settings.wake_on_display_on)
-        general_layout.addWidget(self.wake_on_display_on)
 
         self.language = QComboBox()
         self.language.addItem(tr("Automatic (system language)"), i18n.AUTO)
@@ -321,9 +322,7 @@ class SettingsDialog(QDialog):
             tree.setItemWidget(item, MCOL_NAME, name)
 
             inputs: list[tuple[int, QLineEdit, QCheckBox]] = []
-            # Configured inputs first (their order is the cycle order), then
-            # the rest the monitor announces.
-            for code in dict.fromkeys([*s.inputs, *m.inputs]):
+            for code in s.known_inputs(m.inputs):
                 text = input_source_name(code)
                 if code == m.input:
                     text += "  " + tr("(current)")

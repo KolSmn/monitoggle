@@ -14,7 +14,16 @@ import sys
 
 import pytest
 
-from monitoggle import APP_NAME, cli, core, linux_setup, logs, monitor_settings, version
+from monitoggle import (
+    APP_NAME,
+    cli,
+    core,
+    linux_setup,
+    logs,
+    monitor_settings,
+    storage,
+    version,
+)
 from monitoggle.backends import get_backend
 from monitoggle.backends import linux
 from monitoggle.backends.base import Backend
@@ -743,7 +752,7 @@ def test_candidate_buses_skip_smbus(monkeypatch, tmp_path):
         d.mkdir()
         (d / "name").write_text(name + "\n")
     monkeypatch.setattr(linux, "SYS_I2C_DEV", tmp_path)
-    assert linux._candidate_buses() == [4, 12]
+    assert linux.candidate_buses() == [4, 12]
 
 
 def test_linux_devices_match_by_connector_name():
@@ -763,21 +772,21 @@ def test_list_monitors_delegates_to_backend(monkeypatch):
     assert core.list_monitors() == [m1]
 
 
-def test_default_log_dir_uses_localappdata_on_windows(monkeypatch, tmp_path):
+def test_state_dir_uses_localappdata_on_windows(monkeypatch, tmp_path):
     monkeypatch.setattr(sys, "platform", "win32")
     monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
-    assert logs._default_log_dir() == tmp_path / "monitoggle"
+    assert storage.state_dir() == tmp_path / "monitoggle"
 
 
-def test_default_log_dir_uses_xdg_state_home_off_windows(monkeypatch, tmp_path):
+def test_state_dir_uses_xdg_state_home_off_windows(monkeypatch, tmp_path):
     monkeypatch.setattr(sys, "platform", "linux")
     monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path))
-    assert logs._default_log_dir() == tmp_path / "monitoggle"
+    assert storage.state_dir() == tmp_path / "monitoggle"
 
 
 def test_linux_warns_to_run_setup_without_permission(monkeypatch, caplog):
     monkeypatch.setattr(linux, "SYS_I2C_DEV", linux.Path("/"))
-    monkeypatch.setattr(linux, "_candidate_buses", lambda: [3, 4])
+    monkeypatch.setattr(linux, "candidate_buses", lambda: [3, 4])
 
     def deny(_bus):
         raise PermissionError

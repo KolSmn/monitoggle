@@ -25,6 +25,13 @@ def config_dir() -> Path:
     return xdg_dir("XDG_CONFIG_HOME", ".config") / APP_NAME
 
 
+def state_dir() -> Path:
+    """For files such as the log, not meant to roam with the user."""
+    if sys.platform == "win32":
+        return Path(os.environ.get("LOCALAPPDATA", ".")) / APP_NAME
+    return xdg_dir("XDG_STATE_HOME", ".local/state") / APP_NAME
+
+
 def read_json(path: Path) -> dict:
     """The JSON object stored at path; empty if the file is missing or
     unusable (logged), so the caller falls back to its defaults."""

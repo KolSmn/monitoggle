@@ -117,6 +117,11 @@ class MonitorSettings:
         s = self.inputs.get(code)
         return s is None or s.enabled
 
+    def known_inputs(self, supported: list[int] | None) -> list[int]:
+        """The listed inputs first (their order is the cycle order), then
+        any others in supported, the monitor's own list."""
+        return list(dict.fromkeys([*self.inputs, *(supported or [])]))
+
     def active_inputs(self, supported: list[int] | None) -> list[int]:
         """Inputs to offer and cycle through: the listed ones if any (else
         supported, the monitor's own list), without the disabled ones."""

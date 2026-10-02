@@ -155,7 +155,8 @@ def _read_edid(bus: int) -> bytes | None:
     return data if data.startswith(EDID_HEADER) else None
 
 
-def _candidate_buses() -> list[int]:
+def candidate_buses() -> list[int]:
+    """The I2C buses a display can be on (not the mainboard's SMBus)."""
     buses: list[int] = []
     for dev in SYS_I2C_DEV.glob("i2c-*"):
         try:
@@ -179,7 +180,7 @@ def _edids_by_bus() -> dict[int, bytes]:
 
     edids: dict[int, bytes] = {}
     denied: list[int] = []
-    for bus in _candidate_buses():
+    for bus in candidate_buses():
         try:
             edid = _read_edid(bus)
         except PermissionError:

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
 
 from .. import storage
@@ -46,41 +46,32 @@ class Settings:
 
     @classmethod
     def from_dict(cls, data: dict) -> Settings:
-        default = cls()
+        """Settings from the JSON data; missing or unusable values fall back
+        to their defaults."""
+        values = {
+            f.name: _coerce(data[f.name], getattr(cls, f.name))
+            for f in fields(cls)
+            if f.name != "shortcuts" and f.name in data
+        }
+        if values.get("shortcut_editor", SHORTCUT_EDITORS[0]) not in SHORTCUT_EDITORS:
+            del values["shortcut_editor"]
         shortcuts = [
             Shortcut(keys=str(s["keys"]), command=str(s["command"]))
             for s in data.get("shortcuts", [])
             if isinstance(s, dict) and "keys" in s and "command" in s
         ]
-        return cls(
-            shortcuts=shortcuts,
-            notifications=bool(data.get("notifications", default.notifications)),
-            language=str(data.get("language", default.language)),
-            wake_before_session_end=bool(
-                data.get("wake_before_session_end", default.wake_before_session_end)
-            ),
-            wake_on_startup=bool(data.get("wake_on_startup", default.wake_on_startup)),
-            wake_on_display_on=bool(
-                data.get("wake_on_display_on", default.wake_on_display_on)
-            ),
-            status_refresh_interval=_non_negative_int(
-                data.get("status_refresh_interval"), default.status_refresh_interval
-            ),
-            resource_log_interval=_non_negative_int(
-                data.get("resource_log_interval"), default.resource_log_interval
-            ),
-            shortcut_editor=(
-                data["shortcut_editor"]
-                if data.get("shortcut_editor") in SHORTCUT_EDITORS
-                else default.shortcut_editor
-            ),
-        )
+        return cls(shortcuts=shortcuts, **values)
 
 
-def _non_negative_int(value: object, default: int) -> int:
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
-        return default
-    return max(0, int(value))
+def _coerce(value: object, default: object) -> object:
+    """value as the type of the setting's default (ints: non-negative)."""
+    if isinstance(default, bool):
+        return bool(value)
+    if isinstance(default, int):
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            return default
+        return max(0, int(value))
+    return str(value)
 
 
 def load(path: Path | None = None) -> Settings:

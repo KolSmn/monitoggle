@@ -4,23 +4,12 @@ optionally mirrored to stdout (up to INFO) and stderr (WARNING and above)."""
 from __future__ import annotations
 
 import logging
-import os
 import sys
 from logging.handlers import RotatingFileHandler
-from pathlib import Path
 
 from . import APP_NAME, storage
 
-
-def _default_log_dir() -> Path:
-    if sys.platform == "win32":
-        base = Path(os.environ.get("LOCALAPPDATA", "."))
-    else:
-        base = storage.xdg_dir("XDG_STATE_HOME", ".local/state")
-    return base / APP_NAME
-
-
-LOG_DIR = _default_log_dir()
+LOG_DIR = storage.state_dir()
 LOG_FILE = LOG_DIR / f"{APP_NAME}.log"
 
 LOG_LEVEL = logging.INFO

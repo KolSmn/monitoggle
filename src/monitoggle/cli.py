@@ -28,21 +28,21 @@ def _number(m: Monitor) -> str:
     return str(m.number) if m.number is not None else "-"
 
 
+def _status(m: Monitor) -> str:
+    mode = core.get_power_mode(m)
+    if mode is None:
+        return "unknown"
+    return "on" if mode == PowerMode.on else "off"
+
+
 def format_list(monitors: list[Monitor]) -> str:
     headers = ["Number", "Status", "Name", "Device name", "Resolution"]
     rows = []
     for m in monitors:
-        mode = core.get_power_mode(m)
-        if mode is None:
-            status = "unknown"
-        elif mode == PowerMode.on:
-            status = "on"
-        else:
-            status = "off"
         rows.append(
             [
                 _number(m),
-                status,
+                _status(m),
                 m.settings.name or "-",
                 m.name,
                 f"{m.width} x {m.height}",
@@ -74,9 +74,7 @@ def format_inputs(monitors: list[Monitor]) -> str:
     for m in monitors:
         s = m.settings
         current = core.get_input_source(m)
-        # The configured inputs first (their order is the cycle order), then
-        # any others the monitor announces.
-        codes = list(dict.fromkeys([*s.inputs, *(core.get_supported_inputs(m) or [])]))
+        codes = s.known_inputs(core.get_supported_inputs(m))
         labels = [
             s.input_label(c) + ("" if s.input_enabled(c) else " [disabled]")
             for c in codes

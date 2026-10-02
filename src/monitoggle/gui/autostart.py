@@ -50,6 +50,15 @@ def desktop_entry(command: list[str]) -> str:
     )
 
 
+def _run_key(access: int | None = None):  # -> winreg.HKEYType
+    """The HKCU Run key (Windows only); read access by default."""
+    import winreg
+
+    return winreg.OpenKey(
+        winreg.HKEY_CURRENT_USER, RUN_KEY, 0, winreg.KEY_READ if access is None else access
+    )
+
+
 def is_supported() -> bool:
     return sys.platform == "win32" or sys.platform.startswith("linux")
 
@@ -59,7 +68,7 @@ def is_enabled() -> bool:
         import winreg
 
         try:
-            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, RUN_KEY) as key:
+            with _run_key() as key:
                 winreg.QueryValueEx(key, APP_NAME)
         except OSError:
             return False
@@ -71,9 +80,7 @@ def _remove_entry() -> None:
     if sys.platform == "win32":
         import winreg
 
-        with winreg.OpenKey(
-            winreg.HKEY_CURRENT_USER, RUN_KEY, 0, winreg.KEY_SET_VALUE
-        ) as key, contextlib.suppress(FileNotFoundError):
+        with _run_key(winreg.KEY_SET_VALUE) as key, contextlib.suppress(FileNotFoundError):
             winreg.DeleteValue(key, APP_NAME)
         return
     desktop_file().unlink(missing_ok=True)
@@ -86,9 +93,7 @@ def set_enabled(enabled: bool) -> None:
     if sys.platform == "win32":
         import winreg
 
-        with winreg.OpenKey(
-            winreg.HKEY_CURRENT_USER, RUN_KEY, 0, winreg.KEY_SET_VALUE
-        ) as key:
+        with _run_key(winreg.KEY_SET_VALUE) as key:
             winreg.SetValueEx(
                 key,
                 APP_NAME,

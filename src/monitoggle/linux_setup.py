@@ -34,7 +34,7 @@ def has_i2c_access() -> bool:
     """True if i2c-dev is loaded and every display I2C bus is read/writable."""
     if not linux.SYS_I2C_DEV.is_dir():
         return False
-    buses = linux._candidate_buses()
+    buses = linux.candidate_buses()
     return bool(buses) and all(
         os.access(f"/dev/i2c-{bus}", os.R_OK | os.W_OK) for bus in buses
     )
