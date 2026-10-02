@@ -37,7 +37,6 @@ from .settings_dialog import SettingsDialog
 
 logger = logging.getLogger(APP_NAME)
 
-TITLE = DISPLAY_NAME
 NOTIFY_MS = 3000
 RESOURCE_VIEW_MS = 2000  # CPU/RAM line in the menu, while it is open
 # After the display signal is back: when to check the monitors (ms).
@@ -45,7 +44,7 @@ DISPLAY_WAKE_DELAYS_MS = (2000, 8000)
 
 
 def title_with_version() -> str:
-    return f"{TITLE} {get_version()}"
+    return f"{DISPLAY_NAME} {get_version()}"
 
 
 # --- Icon -------------------------------------------------------------------------
@@ -402,11 +401,11 @@ class TrayApp(QObject):
                 "'{command}' failed.", command=result.command
             )
             self.tray.showMessage(
-                TITLE, text, QSystemTrayIcon.MessageIcon.Warning, NOTIFY_MS * 2
+                DISPLAY_NAME, text, QSystemTrayIcon.MessageIcon.Warning, NOTIFY_MS * 2
             )
         elif self.settings.notifications and result.messages:
             self.tray.showMessage(
-                TITLE,
+                DISPLAY_NAME,
                 "\n".join(result.messages),
                 QSystemTrayIcon.MessageIcon.Information,
                 NOTIFY_MS,
@@ -439,7 +438,7 @@ class TrayApp(QObject):
         if failures and show_errors:
             lines = "\n".join(f"{key}: {text}" for key, _, text in failures)
             self.tray.showMessage(
-                TITLE,
+                DISPLAY_NAME,
                 tr("Some shortcuts could not be registered:") + "\n" + lines,
                 QSystemTrayIcon.MessageIcon.Warning,
                 NOTIFY_MS * 2,
@@ -514,7 +513,7 @@ class TrayApp(QObject):
                     monitor_settings.save(dialog.result_monitor_settings)
                 except OSError as exc:
                     QMessageBox.warning(
-                        None, TITLE, tr("Could not save settings: {error}", error=exc)
+                        None, DISPLAY_NAME, tr("Could not save settings: {error}", error=exc)
                     )
                 self.worker.refresh()  # new names in the menu
                 if new.language != old.language:
@@ -589,7 +588,7 @@ def main() -> int:
 
     use_light_font_engine()
     app = QApplication(sys.argv)
-    app.setApplicationName(TITLE)
+    app.setApplicationName(DISPLAY_NAME)
     app.setQuitOnLastWindowClosed(False)
 
     settings = config.load()
@@ -598,7 +597,7 @@ def main() -> int:
     lock = QLockFile(str(Path(QDir.tempPath()) / f"{APP_NAME}-gui.lock"))
     if not lock.tryLock(100):
         QMessageBox.information(
-            None, TITLE, tr("MoniToggle is already running in the system tray.")
+            None, DISPLAY_NAME, tr("MoniToggle is already running in the system tray.")
         )
         return 0
 
@@ -618,7 +617,7 @@ def main() -> int:
             return
         QMessageBox.critical(
             None,
-            TITLE,
+            DISPLAY_NAME,
             tr(
                 "No system tray found. On GNOME, install the 'AppIndicator and "
                 "KStatusNotifierItem Support' extension."

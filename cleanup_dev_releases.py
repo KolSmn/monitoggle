@@ -20,6 +20,7 @@ without it, the one of the current directory. The token needs
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import re
 import subprocess
@@ -87,19 +88,12 @@ def main() -> int:
 
     repo = _repo()
     tags = _gh("api", "--paginate", f"repos/{repo}/tags", "--jq", ".[].name").split()
-    releases = set(
-        _gh(
-            "release", "list", "--repo", repo, "--limit", "1000",
-            "--json", "tagName", "--jq", ".[].tagName",
-        ).split()
+    found = json.loads(
+        _gh("release", "list", "--repo", repo, "--limit", "1000", "--json", "tagName,isDraft")
     )
+    releases = {r["tagName"] for r in found}
     # Drafts are no working release yet (but are deleted with their tag).
-    published = set(
-        _gh(
-            "release", "list", "--repo", repo, "--limit", "1000", "--exclude-drafts",
-            "--json", "tagName", "--jq", ".[].tagName",
-        ).split()
-    )
+    published = {r["tagName"] for r in found if not r["isDraft"]}
 
     obsolete = obsolete_dev_tags(tags, published)
     if not obsolete:

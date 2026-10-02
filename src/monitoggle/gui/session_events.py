@@ -18,6 +18,7 @@ idle) may ignore that, so the display coming back on is a second chance.
 
 from __future__ import annotations
 
+import ctypes
 import logging
 import shutil
 import signal
@@ -46,7 +47,10 @@ Callback = Callable[[str, float | None], None]
 DisplayCallback = Callable[[bool], None]
 
 SESSION_END_TIMEOUT = 10.0
-SLEEP_TIMEOUT = 4.0  # Windows allows ~2 s for sleep, logind 5 s by default
+WINDOWS_SLEEP_TIMEOUT = 4.0  # Windows allows ~2 s for sleep
+# logind delays sleep and shutdown for a delay inhibitor up to
+# InhibitDelayMaxSec, 5 s by default.
+LOGIND_DELAY_TIMEOUT = 4.0
 LOCK_DEBOUNCE = 5.0  # several sources may report the same lock
 
 
@@ -76,40 +80,39 @@ NOTIFY_FOR_THIS_SESSION = 0
 
 PBT_POWERSETTINGCHANGE = 0x8013
 DEVICE_NOTIFY_WINDOW_HANDLE = 0
-# GUID_CONSOLE_DISPLAY_STATE {6FE69556-704A-47A0-8F24-C28D936FDA47}: the
-# display of the console session; data 0 = off, 1 = on, 2 = dimmed.
-DISPLAY_STATE_GUID = (
-    0x6FE69556, 0x704A, 0x47A0, (0x8F, 0x24, 0xC2, 0x8D, 0x93, 0x6F, 0xDA, 0x47)
-)
 DISPLAY_OFF = 0
 
 
-def _guid(parts: tuple) -> object:
-    import ctypes
+class GUID(ctypes.Structure):
+    # Fixed-width types: the same layout on every platform.
+    _fields_ = [
+        ("Data1", ctypes.c_uint32),
+        ("Data2", ctypes.c_uint16),
+        ("Data3", ctypes.c_uint16),
+        ("Data4", ctypes.c_uint8 * 8),
+    ]
 
-    class GUID(ctypes.Structure):
-        _fields_ = [
-            ("Data1", ctypes.c_ulong),
-            ("Data2", ctypes.c_ushort),
-            ("Data3", ctypes.c_ushort),
-            ("Data4", ctypes.c_ubyte * 8),
-        ]
+    @classmethod
+    def of(cls, data1: int, data2: int, data3: int, data4: tuple[int, ...]) -> GUID:
+        return cls(data1, data2, data3, (ctypes.c_uint8 * 8)(*data4))
 
-    data1, data2, data3, data4 = parts
-    return GUID(data1, data2, data3, (ctypes.c_ubyte * 8)(*data4))
+
+# GUID_CONSOLE_DISPLAY_STATE {6FE69556-704A-47A0-8F24-C28D936FDA47}: the
+# display of the console session; data 0 = off, 1 = on, 2 = dimmed.
+DISPLAY_STATE_GUID = GUID.of(
+    0x6FE69556, 0x704A, 0x47A0, (0x8F, 0x24, 0xC2, 0x8D, 0x93, 0x6F, 0xDA, 0x47)
+)
+_DISPLAY_STATE_GUID_BYTES = bytes(DISPLAY_STATE_GUID)
 
 
 def display_state_from_setting(address: int) -> bool | None:
     """Whether a POWERBROADCAST_SETTING (at address) reports the display as
     on; None if it's about another setting."""
-    import ctypes
-
-    guid = _guid(DISPLAY_STATE_GUID)
-    size = ctypes.sizeof(guid)
-    if ctypes.string_at(address, size) != ctypes.string_at(ctypes.addressof(guid), size):
+    size = len(_DISPLAY_STATE_GUID_BYTES)
+    if ctypes.string_at(address, size) != _DISPLAY_STATE_GUID_BYTES:
         return None
     # Followed by DWORD DataLength and the data: a DWORD for this setting.
-    state = ctypes.c_ulong.from_address(address + size + 4).value
+    state = ctypes.c_uint32.from_address(address + size + 4).value
     return state != DISPLAY_OFF
 
 
@@ -120,7 +123,6 @@ class _WindowsSessionEvents(QWidget):
 
     def __init__(self, callback: Callback, display_callback: DisplayCallback) -> None:
         super().__init__(None, Qt.WindowType.Tool)
-        import ctypes
         from ctypes import wintypes
 
         self._callback = callback
@@ -146,9 +148,8 @@ class _WindowsSessionEvents(QWidget):
         ]
         self._user32.RegisterPowerSettingNotification.restype = wintypes.HANDLE
         self._user32.UnregisterPowerSettingNotification.argtypes = [wintypes.HANDLE]
-        self._display_guid = _guid(DISPLAY_STATE_GUID)
         self._display_notify = self._user32.RegisterPowerSettingNotification(
-            self._hwnd, ctypes.byref(self._display_guid), DEVICE_NOTIFY_WINDOW_HANDLE
+            self._hwnd, ctypes.byref(DISPLAY_STATE_GUID), DEVICE_NOTIFY_WINDOW_HANDLE
         )
         if not self._display_notify:
             logger.warning(
@@ -180,7 +181,7 @@ class _WindowsSessionEvents(QWidget):
             finally:
                 self._user32.ShutdownBlockReasonDestroy(self._hwnd)
         elif msg.message == WM_POWERBROADCAST and msg.wParam == PBT_APMSUSPEND:
-            self._callback(SLEEP, SLEEP_TIMEOUT)
+            self._callback(SLEEP, WINDOWS_SLEEP_TIMEOUT)
         elif msg.message == WM_POWERBROADCAST and msg.wParam == PBT_POWERSETTINGCHANGE:
             on = display_state_from_setting(msg.lParam)
             if on is not None:
@@ -281,7 +282,7 @@ class _LinuxSessionEvents(QObject):
     @Slot(bool)
     def _on_prepare_for_sleep(self, starting: bool) -> None:
         if starting:
-            self._callback(SLEEP, SLEEP_TIMEOUT)
+            self._callback(SLEEP, LOGIND_DELAY_TIMEOUT)
             self._release_inhibitor()  # lets the system go to sleep now
         else:
             self._acquire_inhibitor()  # resumed: ready for the next time
@@ -289,7 +290,7 @@ class _LinuxSessionEvents(QObject):
     @Slot(bool)
     def _on_prepare_for_shutdown(self, starting: bool) -> None:
         if starting:
-            self._callback(SESSION_END, SLEEP_TIMEOUT)
+            self._callback(SESSION_END, LOGIND_DELAY_TIMEOUT)
             self._release_inhibitor()
         else:
             self._acquire_inhibitor()  # shutdown was cancelled

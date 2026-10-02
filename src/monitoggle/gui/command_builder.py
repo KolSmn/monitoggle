@@ -24,6 +24,8 @@ class Action:
     command: str  # CLI subcommand
     label: str  # N_()-marked
     help: str  # N_()-marked
+    # What a command does, in words (N_()-marked); fields {monitors}, {source}.
+    summary: str
     monitors: bool = False  # takes monitor references
     source: bool = False  # input: one input source
     sources: bool = False  # cycle-input: optional subset of inputs
@@ -36,10 +38,17 @@ ACTIONS: tuple[Action, ...] = (
         "toggle",
         N_("Toggle on/off"),
         N_("Turns each chosen monitor off if it is on, and on if it is off."),
+        N_("Toggle {monitors}"),
         monitors=True,
         force=True,
     ),
-    Action("on", N_("Turn on"), N_("Turns the chosen monitors on."), monitors=True),
+    Action(
+        "on",
+        N_("Turn on"),
+        N_("Turns the chosen monitors on."),
+        N_("Turn {monitors} on"),
+        monitors=True,
+    ),
     Action(
         "off",
         N_("Turn off"),
@@ -47,6 +56,7 @@ ACTIONS: tuple[Action, ...] = (
             "Turns the chosen monitors off. Refuses if that would leave no "
             "monitor on, unless forced."
         ),
+        N_("Turn {monitors} off"),
         monitors=True,
         force=True,
     ),
@@ -57,13 +67,20 @@ ACTIONS: tuple[Action, ...] = (
             "One switch for all monitors: if all are on, turns all off; if "
             "all are off, turns all on."
         ),
+        N_("Toggle all monitors"),
         on_mixed=True,
     ),
-    Action("all", N_("Turn all monitors on"), N_("Turns every monitor on.")),
+    Action(
+        "all",
+        N_("Turn all monitors on"),
+        N_("Turns every monitor on."),
+        N_("Turn all monitors on"),
+    ),
     Action(
         "off-all",
         N_("Turn all monitors off"),
         N_("Turns every monitor off, without the safety check."),
+        N_("Turn all monitors off"),
     ),
     Action(
         "input",
@@ -72,6 +89,7 @@ ACTIONS: tuple[Action, ...] = (
             "Switches the chosen monitors to an input source, e.g. to the "
             "port another computer is connected to."
         ),
+        N_("Switch {monitors} to {source}"),
         monitors=True,
         source=True,
     ),
@@ -82,6 +100,7 @@ ACTIONS: tuple[Action, ...] = (
             "Switches each chosen monitor to its next active input source. "
             "Limit it to two inputs to toggle between them."
         ),
+        N_("Next input on {monitors}"),
         monitors=True,
         sources=True,
     ),
@@ -217,34 +236,17 @@ def describe(
     spec = parse(command, settings)
     if spec is None or not spec.is_complete():
         return command
-    who = _monitor_words(monitors, spec.monitors)
-    if spec.action == "toggle":
-        text = tr("Toggle {monitors}", monitors=who)
-    elif spec.action == "on":
-        text = tr("Turn {monitors} on", monitors=who)
-    elif spec.action == "off":
-        text = tr("Turn {monitors} off", monitors=who)
-    elif spec.action == "toggle-all":
-        text = tr("Toggle all monitors")
-        if spec.on_mixed != "off":
-            text += " (" + tr(
-                "mixed: {choice}", choice=tr(ON_MIXED_LABELS[spec.on_mixed]).lower()
-            ) + ")"
-    elif spec.action == "all":
-        text = tr("Turn all monitors on")
-    elif spec.action == "off-all":
-        text = tr("Turn all monitors off")
-    elif spec.action == "input":
-        text = tr(
-            "Switch {monitors} to {source}",
-            monitors=who,
-            source=_source_words(monitors, spec.monitors, spec.source),
-        )
-    else:  # cycle-input
-        text = tr("Next input on {monitors}", monitors=who)
-        if spec.sources:
-            names = [_source_words(monitors, spec.monitors, s) for s in spec.sources]
-            text += " (" + ", ".join(names) + ")"
+    text = tr(
+        ACTIONS_BY_COMMAND[spec.action].summary,
+        monitors=_monitor_words(monitors, spec.monitors),
+        source=_source_words(monitors, spec.monitors, spec.source),
+    )
+    if spec.on_mixed != "off":
+        mixed = tr(ON_MIXED_LABELS[spec.on_mixed]).lower()
+        text += " (" + tr("mixed: {choice}", choice=mixed) + ")"
+    if spec.sources:
+        names = [_source_words(monitors, spec.monitors, s) for s in spec.sources]
+        text += " (" + ", ".join(names) + ")"
     if spec.force:
         text += " " + tr("(forced)")
     return text

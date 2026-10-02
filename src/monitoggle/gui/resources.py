@@ -6,6 +6,8 @@ counts from the Windows API (ctypes) or /proc/self on Linux.
 
 from __future__ import annotations
 
+import ctypes
+import functools
 import logging
 import os
 import sys
@@ -32,23 +34,24 @@ class Sample:
 # --- Windows -----------------------------------------------------------------------
 
 
-def _windows_memory_and_handles() -> tuple[int | None, int | None, int | None]:
-    import ctypes
-    from ctypes import wintypes
+class _ProcessMemoryCounters(ctypes.Structure):
+    _fields_ = [
+        ("cb", ctypes.c_uint32),
+        ("PageFaultCount", ctypes.c_uint32),
+        ("PeakWorkingSetSize", ctypes.c_size_t),
+        ("WorkingSetSize", ctypes.c_size_t),
+        ("QuotaPeakPagedPoolUsage", ctypes.c_size_t),
+        ("QuotaPagedPoolUsage", ctypes.c_size_t),
+        ("QuotaPeakNonPagedPoolUsage", ctypes.c_size_t),
+        ("QuotaNonPagedPoolUsage", ctypes.c_size_t),
+        ("PagefileUsage", ctypes.c_size_t),
+        ("PeakPagefileUsage", ctypes.c_size_t),
+    ]
 
-    class ProcessMemoryCounters(ctypes.Structure):
-        _fields_ = [
-            ("cb", wintypes.DWORD),
-            ("PageFaultCount", wintypes.DWORD),
-            ("PeakWorkingSetSize", ctypes.c_size_t),
-            ("WorkingSetSize", ctypes.c_size_t),
-            ("QuotaPeakPagedPoolUsage", ctypes.c_size_t),
-            ("QuotaPagedPoolUsage", ctypes.c_size_t),
-            ("QuotaPeakNonPagedPoolUsage", ctypes.c_size_t),
-            ("QuotaNonPagedPoolUsage", ctypes.c_size_t),
-            ("PagefileUsage", ctypes.c_size_t),
-            ("PeakPagefileUsage", ctypes.c_size_t),
-        ]
+
+@functools.cache
+def _kernel32() -> ctypes.WinDLL:
+    from ctypes import wintypes
 
     # Own WinDLL instance, so these declarations don't leak into other users
     # of ctypes.windll.kernel32. Declared argtypes are required: the process
@@ -57,7 +60,7 @@ def _windows_memory_and_handles() -> tuple[int | None, int | None, int | None]:
     kernel32.GetCurrentProcess.restype = wintypes.HANDLE
     kernel32.K32GetProcessMemoryInfo.argtypes = [
         wintypes.HANDLE,
-        ctypes.POINTER(ProcessMemoryCounters),
+        ctypes.POINTER(_ProcessMemoryCounters),
         wintypes.DWORD,
     ]
     kernel32.K32GetProcessMemoryInfo.restype = wintypes.BOOL
@@ -66,16 +69,21 @@ def _windows_memory_and_handles() -> tuple[int | None, int | None, int | None]:
         ctypes.POINTER(wintypes.DWORD),
     ]
     kernel32.GetProcessHandleCount.restype = wintypes.BOOL
+    return kernel32
+
+
+def _windows_memory_and_handles() -> tuple[int | None, int | None, int | None]:
+    kernel32 = _kernel32()
     process = kernel32.GetCurrentProcess()
 
     rss = peak = None
-    counters = ProcessMemoryCounters()
+    counters = _ProcessMemoryCounters()
     counters.cb = ctypes.sizeof(counters)
     if kernel32.K32GetProcessMemoryInfo(process, ctypes.byref(counters), counters.cb):
         rss, peak = counters.WorkingSetSize, counters.PeakWorkingSetSize
 
     handles = None
-    count = wintypes.DWORD()
+    count = ctypes.c_uint32()
     if kernel32.GetProcessHandleCount(process, ctypes.byref(count)):
         handles = count.value
     return rss, peak, handles

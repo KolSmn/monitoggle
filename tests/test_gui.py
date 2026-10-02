@@ -804,15 +804,13 @@ def test_windows_session_events():
         send(hooks._hwnd, events.WM_POWERBROADCAST, events.PBT_APMSUSPEND, 0)
         send(hooks._hwnd, events.WM_QUERYENDSESSION, 0, 0)
 
-        def setting(guid_parts, state):
+        def setting(guid, state):
             # POWERBROADCAST_SETTING: GUID, DWORD DataLength, DWORD data.
-            guid = events._guid(guid_parts)
-            raw = ctypes.string_at(ctypes.addressof(guid), ctypes.sizeof(guid))
             return ctypes.create_string_buffer(
-                raw + (4).to_bytes(4, "little") + state.to_bytes(4, "little")
+                bytes(guid) + (4).to_bytes(4, "little") + state.to_bytes(4, "little")
             )
 
-        other = (0x12345678, 0x1, 0x2, (0,) * 8)
+        other = events.GUID.of(0x12345678, 0x1, 0x2, (0,) * 8)
         buffers = [
             setting(events.DISPLAY_STATE_GUID, 0),  # off
             setting(other, 0),  # another power setting: ignored
@@ -828,7 +826,7 @@ def test_windows_session_events():
         hooks.close_hooks()
     assert calls == [
         (events.LOCK, None),
-        (events.SLEEP, events.SLEEP_TIMEOUT),
+        (events.SLEEP, events.WINDOWS_SLEEP_TIMEOUT),
         (events.SESSION_END, events.SESSION_END_TIMEOUT),
     ]
     # (Windows may also report the current state on registration first.)

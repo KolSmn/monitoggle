@@ -13,7 +13,35 @@ from dataclasses import dataclass
 
 from .i18n import N_, tr
 
-MODIFIERS = ("ctrl", "alt", "shift", "meta")
+# Windows RegisterHotKey modifier flags.
+MOD_ALT = 0x0001
+MOD_CONTROL = 0x0002
+MOD_SHIFT = 0x0004
+MOD_WIN = 0x0008
+MOD_NOREPEAT = 0x4000
+
+# X11 XGrabKey modifier masks.
+X_SHIFT_MASK = 1 << 0
+X_LOCK_MASK = 1 << 1  # Caps Lock
+X_CONTROL_MASK = 1 << 2
+X_MOD1_MASK = 1 << 3  # Alt
+X_MOD2_MASK = 1 << 4  # Num Lock (on practically every setup)
+X_MOD4_MASK = 1 << 6  # Super
+
+# Modifier -> (display name, Windows flag, X11 mask), in display order.
+_MODIFIERS: dict[str, tuple[str, int, int]] = {
+    "ctrl": ("Ctrl", MOD_CONTROL, X_CONTROL_MASK),
+    "alt": ("Alt", MOD_ALT, X_MOD1_MASK),
+    "shift": ("Shift", MOD_SHIFT, X_SHIFT_MASK),
+    "meta": ("Meta", MOD_WIN, X_MOD4_MASK),
+}
+_MODIFIER_ALIASES = {"control": "ctrl", "win": "meta", "super": "meta"}
+
+# The X11 modifiers a hotkey can use; other bits (lock keys, mouse buttons)
+# are ignored when matching a key press.
+X_RELEVANT_MASK = sum(x11 for _, _, x11 in _MODIFIERS.values())
+# Lock keys whose state must not affect whether a hotkey matches.
+X_IGNORED_MASKS = (0, X_LOCK_MASK, X_MOD2_MASK, X_LOCK_MASK | X_MOD2_MASK)
 
 # Portable key name -> (Windows virtual-key code, X11 keysym name)
 _SPECIAL_KEYS: dict[str, tuple[int, str]] = {
@@ -66,8 +94,7 @@ class Hotkey:
     key: str
 
     def __str__(self) -> str:
-        names = {"ctrl": "Ctrl", "alt": "Alt", "shift": "Shift", "meta": "Meta"}
-        mods = [names[m] for m in MODIFIERS if m in self.modifiers]
+        mods = [name for m, (name, _, _) in _MODIFIERS.items() if m in self.modifiers]
         return "+".join([*mods, self.key])
 
     @property
@@ -87,12 +114,8 @@ def parse(text: str) -> Hotkey:
 
     modifiers: set[str] = set()
     for mod in mods:
-        m = mod.lower()
-        if m == "control":
-            m = "ctrl"
-        elif m in ("win", "super"):
-            m = "meta"
-        if m not in MODIFIERS:
+        m = _MODIFIER_ALIASES.get(mod.lower(), mod.lower())
+        if m not in _MODIFIERS:
             raise HotkeyError(
                 N_("Unknown modifier '{modifier}' in '{text}'."), modifier=mod, text=text
             )
@@ -118,49 +141,11 @@ def parse(text: str) -> Hotkey:
     return Hotkey(frozenset(modifiers), canonical)
 
 
-# --- Windows (RegisterHotKey) --------------------------------------------------
-
-MOD_ALT = 0x0001
-MOD_CONTROL = 0x0002
-MOD_SHIFT = 0x0004
-MOD_WIN = 0x0008
-MOD_NOREPEAT = 0x4000
-
-
 def win_modifiers(hotkey: Hotkey) -> int:
-    flags = MOD_NOREPEAT
-    for mod, flag in (
-        ("alt", MOD_ALT),
-        ("ctrl", MOD_CONTROL),
-        ("shift", MOD_SHIFT),
-        ("meta", MOD_WIN),
-    ):
-        if mod in hotkey.modifiers:
-            flags |= flag
-    return flags
-
-
-# --- X11 (XGrabKey) --------------------------------------------------------------
-
-X_SHIFT_MASK = 1 << 0
-X_LOCK_MASK = 1 << 1  # Caps Lock
-X_CONTROL_MASK = 1 << 2
-X_MOD1_MASK = 1 << 3  # Alt
-X_MOD2_MASK = 1 << 4  # Num Lock (on practically every setup)
-X_MOD4_MASK = 1 << 6  # Super
-
-# Lock keys whose state must not affect whether a hotkey matches.
-X_IGNORED_MASKS = (0, X_LOCK_MASK, X_MOD2_MASK, X_LOCK_MASK | X_MOD2_MASK)
+    """RegisterHotKey flags for the hotkey's modifiers."""
+    return MOD_NOREPEAT | sum(_MODIFIERS[m][1] for m in hotkey.modifiers)
 
 
 def x11_modifiers(hotkey: Hotkey) -> int:
-    mask = 0
-    for mod, flag in (
-        ("shift", X_SHIFT_MASK),
-        ("ctrl", X_CONTROL_MASK),
-        ("alt", X_MOD1_MASK),
-        ("meta", X_MOD4_MASK),
-    ):
-        if mod in hotkey.modifiers:
-            mask |= flag
-    return mask
+    """XGrabKey mask for the hotkey's modifiers."""
+    return sum(_MODIFIERS[m][2] for m in hotkey.modifiers)

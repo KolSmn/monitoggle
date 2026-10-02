@@ -137,13 +137,6 @@ class _WindowsHotkeys(QAbstractNativeEventFilter):
 
 # --- X11 -------------------------------------------------------------------------
 
-_X11_RELEVANT_MASK = (
-    hotkeys.X_SHIFT_MASK
-    | hotkeys.X_CONTROL_MASK
-    | hotkeys.X_MOD1_MASK
-    | hotkeys.X_MOD4_MASK
-)
-
 
 class _X11Hotkeys:
     # python-xlib connections are not thread-safe, so a dedicated thread owns
@@ -219,7 +212,7 @@ class _X11Hotkeys:
                     event = disp.next_event()
                     if event.type != X.KeyPress:
                         continue
-                    index = lookup.get((event.detail, event.state & _X11_RELEVANT_MASK))
+                    index = lookup.get((event.detail, event.state & hotkeys.X_RELEVANT_MASK))
                     if index is not None:
                         self._on_trigger(index)
         except Exception:
