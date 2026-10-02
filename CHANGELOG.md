@@ -6,6 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+- Internal restructuring: one monitor model shared by the command-line tool and the tray app, a single path for parsing commands, and the tray app split into smaller modules; no change in behavior.
 
 ## [v1.2.0] - 2026-10-01
 

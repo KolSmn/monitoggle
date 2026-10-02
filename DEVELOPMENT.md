@@ -12,10 +12,18 @@ Requirement: [uv](https://docs.astral.sh/uv/)
 uv run --extra gui pytest -q
 ```
 
-Layout: `src/monitoggle/` with `core` (monitor discovery, status and all
-commands, used by both front-ends), `cli` (argument parsing), `gui` (tray
-app), `monitor_settings` (monitor and input names, shared by both),
-`logs` and `backends` (platform-specific monitor discovery).
+Layout of `src/monitoggle/`:
+
+- Shared by both front-ends (Qt-free): `core` (monitor discovery, status
+  and all commands), `models` (the monitor model), `backends`
+  (platform-specific monitor discovery), `monitor_settings` (monitor and
+  input names), `storage` (per-user folders and JSON files), `logs`.
+- `cli`: argument parsing; the tray app runs its commands through it too.
+- `gui` (tray app): `app` (entry point), `tray` (menu and events),
+  `worker` (DDC/CI work off the GUI thread), `monitor_state` (what the
+  menu shows), `commands` (parsing and running shortcut commands),
+  `command_builder` and the dialogs, `hotkeys` / `hotkey_listeners`,
+  `session_events`, `config`, `i18n`.
 
 ## Versions and releases
 
