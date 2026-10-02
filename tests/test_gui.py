@@ -729,8 +729,8 @@ def test_light_font_engine_only_on_windows(monkeypatch):
 # --- wake before lock / session end / sleep ------------------------------------------
 
 def test_worker_call():
-    app_module = pytest.importorskip("monitoggle.gui.app")
-    worker = app_module.Worker()
+    worker_module = pytest.importorskip("monitoggle.gui.worker")
+    worker = worker_module.Worker()
     try:
         assert worker.call(lambda: 42, timeout=5) == 42
 
@@ -838,7 +838,7 @@ def test_wake_on_display_on(monkeypatch):
     display signal off, the lock hook "turns them on" (acknowledged, but
     ignored without a signal); when the display is back, they get "on"
     again, then the usual check."""
-    app_module = pytest.importorskip("monitoggle.gui.app")
+    tray_module = pytest.importorskip("monitoggle.gui.tray")
     from monitoggle import core
 
     calls = []
@@ -847,7 +847,7 @@ def test_wake_on_display_on(monkeypatch):
     )
     monkeypatch.setattr(core, "turn_on_again", lambda names: calls.append(("again", names)))
     # Run delayed and queued work right away.
-    monkeypatch.setattr(app_module.QTimer, "singleShot", lambda _ms, fn: fn())
+    monkeypatch.setattr(tray_module.QTimer, "singleShot", lambda _ms, fn: fn())
 
     class Worker:
         def call(self, fn, timeout):
@@ -860,7 +860,7 @@ def test_wake_on_display_on(monkeypatch):
     tray._woken_while_display_off = set()
     for name in ("_before_session_end", "_wake_and_remember", "_on_display_state",
                  "_wake_after_display_on"):
-        setattr(tray, name, getattr(app_module.TrayApp, name).__get__(tray))
+        setattr(tray, name, getattr(tray_module.TrayApp, name).__get__(tray))
 
     tray._on_display_state(True)  # initial report: nothing to do
     assert calls == []
