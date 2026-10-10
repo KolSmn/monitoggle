@@ -58,6 +58,7 @@ class TrayApp(QObject):
 
         self.hotkeys = HotkeyManager(self)
         self.hotkeys.triggered.connect(self._on_hotkey)
+        self.hotkeys.failed.connect(self._on_hotkey_failures)
 
         self._resource_meter = ResourceMeter()
         self._resource_view_timer = QTimer(self)
@@ -309,12 +310,23 @@ class TrayApp(QObject):
                 failures.append((s.keys, str(exc), exc.translated()))
                 continue
             self._hotkey_commands.append(s.command)
-        failures += [
-            (key, reason, tr(reason)) for key, reason in self.hotkeys.set_hotkeys(keys)
-        ]
+        registered = self.hotkeys.set_hotkeys(keys, self._hotkey_commands)
+        failures += [(key, reason, tr(reason)) for key, reason in registered]
+        self._report_hotkey_failures(failures, show_errors)
+        if not failures and keys and (unsupported := unsupported_reason()):
+            logger.warning("Global shortcuts disabled: %s", unsupported)
+
+    def _on_hotkey_failures(self, failures: list[tuple[hotkeys.Hotkey, str]]) -> None:
+        # Reported later by the portal, e.g. declined in the desktop's dialog.
+        self._report_hotkey_failures(
+            [(key, reason, tr(reason)) for key, reason in failures], show=True
+        )
+
+    def _report_hotkey_failures(self, failures: list[tuple[object, str, str]], show: bool) -> None:
+        """failures: (shortcut, English reason for the log, translated reason)."""
         for key, reason, _ in failures:
             logger.warning("Could not register shortcut %s: %s", key, reason)
-        if failures and show_errors:
+        if failures and show:
             lines = "\n".join(f"{key}: {text}" for key, _, text in failures)
             self.tray.showMessage(
                 DISPLAY_NAME,
@@ -322,8 +334,6 @@ class TrayApp(QObject):
                 QSystemTrayIcon.MessageIcon.Warning,
                 NOTIFY_MS * 2,
             )
-        elif keys and (unsupported := unsupported_reason()):
-            logger.warning("Global shortcuts disabled: %s", unsupported)
 
     def _before_session_end(self, reason: str, timeout: float | None) -> None:
         """Lock, logoff/shutdown or sleep is imminent: make sure nobody is

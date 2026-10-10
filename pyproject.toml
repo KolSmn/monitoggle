@@ -12,6 +12,7 @@ dependencies = [
 
 [project.optional-dependencies]
 gui = [
+    "jeepney>=0.8; sys_platform == 'linux'",
     "PySide6-Essentials>=6.8",
     "python-xlib>=0.33; sys_platform == 'linux'",
 ]
@@ -57,6 +58,7 @@ skips = ["B404", "B603"]
 
 [dependency-groups]
 dev = [
+    "jeepney>=0.8",
     "pygithub>=2.10.0",
     "pyinstaller>=6.11",
     "pytest>=9.1.1",

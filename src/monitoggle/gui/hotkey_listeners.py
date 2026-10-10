@@ -1,7 +1,9 @@
-"""System-wide hotkey registration: RegisterHotKey on Windows, XGrabKey on X11.
+"""System-wide hotkey registration: RegisterHotKey on Windows, XGrabKey on X11,
+the GlobalShortcuts portal on Wayland (see hotkey_portal).
 
-Wayland has no API for an app to grab keys globally; there the user binds
-the equivalent CLI command in the desktop's own keyboard settings instead.
+Wayland has no API for an app to grab keys itself; on a desktop without the
+portal the user binds the equivalent CLI command in the desktop's own
+keyboard settings instead.
 """
 
 from __future__ import annotations
@@ -15,7 +17,7 @@ from collections.abc import Callable
 
 from PySide6.QtCore import QAbstractNativeEventFilter, QCoreApplication, QObject, Signal
 
-from . import hotkeys
+from . import hotkey_portal, hotkeys
 from .hotkeys import Hotkey
 from .i18n import N_
 
@@ -26,19 +28,30 @@ logger = logging.getLogger(__name__)
 Failures = list[tuple[Hotkey, str]]
 
 
+def _is_wayland() -> bool:
+    return sys.platform.startswith("linux") and bool(
+        os.environ.get("XDG_SESSION_TYPE") == "wayland" or os.environ.get("WAYLAND_DISPLAY")
+    )
+
+
+def uses_portal() -> bool:
+    """Whether hotkeys go through the desktop's GlobalShortcuts portal,
+    which asks the user to confirm them (and may assign other keys)."""
+    return _is_wayland() and hotkey_portal.portal_version() is not None
+
+
 def unsupported_reason() -> str | None:
     """Why global hotkeys can't work in this session, or None if they can
     (English; translate with tr() for display)."""
     if sys.platform == "win32":
         return None
     if sys.platform.startswith("linux"):
-        if (
-            os.environ.get("XDG_SESSION_TYPE") == "wayland"
-            or os.environ.get("WAYLAND_DISPLAY")
-        ):
+        if _is_wayland():
+            if uses_portal():
+                return None
             return N_(
-                "Global shortcuts are not available on Wayland. Bind the CLI "
-                "command in your desktop's keyboard settings instead."
+                "This Wayland desktop doesn't offer global shortcuts to apps. "
+                "Bind the CLI command in your desktop's keyboard settings instead."
             )
         if not os.environ.get("DISPLAY"):
             return N_("No X11 display found.")
@@ -51,20 +64,30 @@ def unsupported_reason() -> str | None:
 
 
 class HotkeyManager(QObject):
-    """Registers a list of hotkeys; emits triggered(index) when one is pressed."""
+    """Registers a list of hotkeys; emits triggered(index) when one is pressed.
+
+    set_hotkeys() returns the hotkeys that failed right away; with the
+    portal, failures can also come later (the user declines them in the
+    desktop's dialog), as failed(Failures).
+    """
 
     triggered = Signal(int)
+    failed = Signal(object)  # Failures
 
     def __init__(self, parent: QObject | None = None) -> None:
         super().__init__(parent)
-        self._backend: _WindowsHotkeys | _X11Hotkeys | None = None
+        self._backend: _WindowsHotkeys | _X11Hotkeys | hotkey_portal.PortalHotkeys | None = None
 
-    def set_hotkeys(self, keys: list[Hotkey]) -> Failures:
+    def set_hotkeys(self, keys: list[Hotkey], descriptions: list[str]) -> Failures:
+        """descriptions: what each hotkey does (the portal shows them)."""
         self.clear()
         if not keys or unsupported_reason() is not None:
             return []
         if sys.platform == "win32":
             self._backend = _WindowsHotkeys(self.triggered.emit)
+        elif uses_portal():
+            self._backend = hotkey_portal.PortalHotkeys(self.triggered.emit, self.failed.emit)
+            return self._backend.register(keys, descriptions)
         else:
             self._backend = _X11Hotkeys(self.triggered.emit)
         return self._backend.register(keys)

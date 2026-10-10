@@ -349,6 +349,15 @@ wheels = [
 ]
 
 [[package]]
+name = "jeepney"
+version = "0.9.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/7b/6f/357efd7602486741aa73ffc0617fb310a29b588ed0fd69c2399acbb85b0c/jeepney-0.9.0.tar.gz", hash = "sha256:cf0e9e845622b81e4a28df94c40345400256ec608d0e55bb8a3feaa9163f5732", size = 106758, upload-time = "2025-02-27T18:51:01.684Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b2/a3/e137168c9c44d18eff0376253da9f1e9234d0239e0ee230d2fee6cea8e55/jeepney-0.9.0-py3-none-any.whl", hash = "sha256:97e5714520c16fc0a45695e5365a2e11b81ea79bba796e26f9f1d178cb182683", size = 49010, upload-time = "2025-02-27T18:51:00.104Z" },
+]
+
+[[package]]
 name = "macholib"
 version = "1.16.4"
 source = { registry = "https://pypi.org/simple" }
@@ -369,12 +378,14 @@ dependencies = [
 
 [package.optional-dependencies]
 gui = [
+    { name = "jeepney", marker = "sys_platform == 'linux'" },
     { name = "pyside6-essentials" },
     { name = "python-xlib", marker = "sys_platform == 'linux'" },
 ]
 
 [package.dev-dependencies]
 dev = [
+    { name = "jeepney" },
     { name = "pygithub" },
     { name = "pyinstaller" },
     { name = "pytest" },
@@ -382,6 +393,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "jeepney", marker = "sys_platform == 'linux' and extra == 'gui'", specifier = ">=0.8" },
     { name = "monitorcontrol", specifier = ">=4.2.0" },
     { name = "pyside6-essentials", marker = "extra == 'gui'", specifier = ">=6.8" },
     { name = "python-xlib", marker = "sys_platform == 'linux' and extra == 'gui'", specifier = ">=0.33" },
@@ -390,6 +402,7 @@ provides-extras = ["gui"]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "jeepney", specifier = ">=0.8" },
     { name = "pygithub", specifier = ">=2.10.0" },
     { name = "pyinstaller", specifier = ">=6.11" },
     { name = "pytest", specifier = ">=9.1.1" },

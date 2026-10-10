@@ -78,10 +78,23 @@ jobs:
 
       - name: Scan the code (bandit)
         # Settings and justified exceptions: [tool.bandit] in pyproject.toml.
-        run: uvx bandit -c pyproject.toml -r src build.py download_latest_release.py cleanup_dev_releases.py
+        run: uvx bandit -c pyproject.toml -r src build.py download_latest_release.py cleanup_dev_releases.py check_changelog.py
+
+  changelog:
+    # Final release tags need a CHANGELOG.md entry (dev tags pass). The
+    # same check runs locally before tagging: .githooks/reference-transaction.
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the changelog entry
+        env:
+          TAG: ${{ github.ref_name }}
+        run: python3 check_changelog.py "$TAG"
 
   build-linux:
-    needs: [test, licenses, security]
+    needs: [test, licenses, security, changelog]
     if: startsWith(github.ref, 'refs/tags/')
     # Oldest available runner: the binary links against the build host's
     # glibc, so building on an older one keeps it running on more distros.
@@ -109,7 +122,7 @@ jobs:
           if-no-files-found: error
 
   build-windows:
-    needs: [test, licenses, security]
+    needs: [test, licenses, security, changelog]
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: windows-latest
     steps:

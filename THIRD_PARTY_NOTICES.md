@@ -25,6 +25,7 @@ https://github.com/KolSmn/monitoggle
 
 | Component | License | Source |
 |-----------|---------|--------|
+| jeepney (tray app) | MIT | https://gitlab.com/takluyver/jeepney |
 | pyudev | LGPL-2.1-or-later | https://github.com/pyudev/pyudev |
 | python-xlib | LGPL-2.1-or-later | https://github.com/python-xlib/python-xlib |
 | six | MIT | https://github.com/benjaminp/six |
