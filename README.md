@@ -21,10 +21,13 @@ Get the latest version from the
 | `monitoggle-cli-linux-x86_64` | Command-line tool for Linux |
 
 Each file is standalone; nothing needs to be installed. Put it in a
-fixed place, e.g. `%LOCALAPPDATA%\Programs\monitoggle\` on Windows, and
-put the command-line tool next to the tray app. The tray app is all most
-people need; the command-line tool is for scripts and for keyboard
-shortcuts bound outside the tray app.
+fixed place, e.g. `%LOCALAPPDATA%\Programs\monitoggle\` on Windows. The
+tray app is all most people need; the command-line tool is for scripts
+and for keyboard shortcuts bound outside the tray app. If you use both,
+put the command-line tool next to the tray app and keep its file name:
+then *Copy CLI* in the tray app's settings gives you the command with
+the full path to it. The tray app doesn't need the command-line tool
+otherwise.
 
 On Windows, SmartScreen may warn that the app is from an unknown
 publisher, since the executables aren't signed: click *More info → Run
