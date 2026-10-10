@@ -144,8 +144,10 @@ def _run(bus, until):
 
 
 @pytest.fixture(autouse=True)
-def _fast_poll(monkeypatch):
+def _isolated(monkeypatch, tmp_path):
     monkeypatch.setattr(hotkey_portal, "POLL_INTERVAL", 0.01)
+    monkeypatch.setattr(hotkey_portal, "DESKTOP_FILE_DELAY", 0)
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
 
 
 def test_portal_trigger_format():
@@ -177,6 +179,19 @@ def test_binds_shortcuts_and_reports_presses():
     # Ends the session and the connection when unregistered.
     assert bus.members()[-1] == "Close"
     assert bus.closed
+
+
+def test_registers_an_app_id_with_its_desktop_file(tmp_path, monkeypatch):
+    monkeypatch.setattr(hotkey_portal.autostart, "launch_command", lambda: ["/opt/mt/monitoggle"])
+    bus = FakeBus(press=[IDS[0]])
+    _run(bus, lambda t, f: t)
+
+    # Registered first: the portal refuses apps without an app ID.
+    assert bus.calls[0] == ("Register", (hotkey_portal.APP_ID, {}))
+    entry = (tmp_path / "applications" / f"{hotkey_portal.APP_ID}.desktop").read_text()
+    assert "Exec=/opt/mt/monitoggle\n" in entry
+    assert "Name=MoniToggle\n" in entry
+    assert "Autostart" not in entry
 
 
 def test_declined_in_the_desktops_dialog():

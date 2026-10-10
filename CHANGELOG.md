@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-- Global shortcuts on Wayland: the tray app binds its shortcuts through the desktop's GlobalShortcuts portal (KDE Plasma 5.27+, recent GNOME versions). The desktop asks to confirm them and may assign other keys; shortcuts it declines are reported. On Wayland desktops without the portal, *Copy CLI* stays the way to bind commands in the desktop's keyboard settings.
+- Global shortcuts on Wayland: the tray app binds its shortcuts through the desktop's GlobalShortcuts portal (KDE Plasma 5.27+, recent GNOME versions). The desktop asks to confirm them and may assign other keys; shortcuts it declines are reported. The portal needs an app ID, so the tray app writes `~/.local/share/applications/io.github.kolsmn.monitoggle.desktop` (which also lists MoniToggle in the desktop's app menu). On Wayland desktops without the portal, *Copy CLI* stays the way to bind commands in the desktop's keyboard settings.
 
 ## [v1.3.0] - 2026-10-02
 

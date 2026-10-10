@@ -20,8 +20,11 @@ import threading
 import time
 from collections import deque
 from collections.abc import Callable
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from .. import storage
+from . import autostart
 from .hotkeys import Hotkey, portal_trigger
 from .i18n import N_
 
@@ -46,6 +49,7 @@ RESPONSE_CANCELLED = 1
 CALL_TIMEOUT = 5.0  # seconds for a D-Bus method call
 SESSION_TIMEOUT = 10.0  # seconds for the portal to open a session
 POLL_INTERVAL = 0.5  # seconds between checks whether to stop
+DESKTOP_FILE_DELAY = 1.0  # seconds for the portal to notice a new desktop file
 
 # (hotkey, reason) per hotkey that could not be bound; reasons are English.
 Failures = list[tuple[Hotkey, str]]
@@ -74,6 +78,27 @@ def portal_version() -> int | None:
         logger.debug("No GlobalShortcuts portal.", exc_info=True)
         return None
     return int(version)
+
+
+def desktop_file() -> Path:
+    """The desktop file the portal identifies this app by (see APP_ID)."""
+    return storage.xdg_dir("XDG_DATA_HOME", ".local/share") / "applications" / f"{APP_ID}.desktop"
+
+
+def _write_desktop_file() -> bool:
+    """Writes desktop_file(), pointing at how this app runs now; whether it
+    changed."""
+    path = desktop_file()
+    entry = autostart.desktop_entry(autostart.launch_command(), autostart=False)
+    try:
+        if path.read_text(encoding="utf-8") == entry:
+            return False
+    except OSError:
+        pass
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(entry, encoding="utf-8")
+    logger.info("Wrote %s for the shortcuts portal.", path)
+    return True
 
 
 def shortcut_id(hotkey: Hotkey, description: str) -> str:
@@ -264,12 +289,19 @@ class PortalHotkeys:
         return unwrap_msg(self._conn.send_and_get_reply(msg, timeout=CALL_TIMEOUT))
 
     def _register_app(self) -> None:
-        # Host (non-Flatpak) apps tell the portal who they are this way;
-        # older portals don't have it and take the app as unknown.
+        # The portal only binds shortcuts for apps with an app ID. Host
+        # (non-Flatpak) apps register one here, which needs a desktop file of
+        # that name; the desktop also shows its name in the dialog.
+        try:
+            if _write_desktop_file():
+                time.sleep(DESKTOP_FILE_DELAY)
+        except OSError:
+            logger.warning("Could not write %s.", desktop_file(), exc_info=True)
         try:
             self._call(PORTAL_PATH, REGISTRY, "Register", "sa{sv}", (APP_ID, {}))
-        except Exception:
-            logger.debug("Could not register %s with the portal.", APP_ID, exc_info=True)
+        except Exception as exc:
+            # E.g. an older portal without the registry.
+            logger.warning("Could not register %s with the portal: %s", APP_ID, exc)
 
     def _subscribe(self, rule: MatchRule) -> None:
         from jeepney.bus_messages import message_bus

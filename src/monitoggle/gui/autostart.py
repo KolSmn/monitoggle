@@ -37,7 +37,9 @@ def _desktop_quote(arg: str) -> str:
     return f'"{escaped}"'
 
 
-def desktop_entry(command: list[str]) -> str:
+def desktop_entry(command: list[str], autostart: bool = True) -> str:
+    """A desktop file starting command; autostart: for the autostart folder
+    (otherwise e.g. for the applications folder)."""
     exec_line = " ".join(_desktop_quote(a) for a in command).replace("%", "%%")
     return (
         "[Desktop Entry]\n"
@@ -46,7 +48,7 @@ def desktop_entry(command: list[str]) -> str:
         "Comment=Turn monitors on and off via DDC/CI\n"
         f"Exec={exec_line}\n"
         "Terminal=false\n"
-        "X-GNOME-Autostart-enabled=true\n"
+        + ("X-GNOME-Autostart-enabled=true\n" if autostart else "")
     )
 
 
