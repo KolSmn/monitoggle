@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+- Global shortcuts on Wayland: the tray app binds its shortcuts through the desktop's GlobalShortcuts portal (KDE Plasma 5.27+, recent GNOME versions). The desktop asks to confirm them and may assign other keys; shortcuts it declines are reported. On Wayland desktops without the portal, *Copy CLI* stays the way to bind commands in the desktop's keyboard settings.
+
 ## [v1.3.0] - 2026-10-02
 
 - Internal restructuring: one monitor model shared by the command-line tool and the tray app, a single path for parsing commands, and the tray app split into smaller modules; no change in behavior.

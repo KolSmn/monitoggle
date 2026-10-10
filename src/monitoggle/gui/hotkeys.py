@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import string
 from dataclasses import dataclass
+from typing import NamedTuple
 
 from .i18n import N_, tr
 
@@ -28,22 +29,31 @@ X_MOD1_MASK = 1 << 3  # Alt
 X_MOD2_MASK = 1 << 4  # Num Lock (on practically every setup)
 X_MOD4_MASK = 1 << 6  # Super
 
-# Modifier -> (display name, Windows flag, X11 mask), in display order.
-_MODIFIERS: dict[str, tuple[str, int, int]] = {
-    "ctrl": ("Ctrl", MOD_CONTROL, X_CONTROL_MASK),
-    "alt": ("Alt", MOD_ALT, X_MOD1_MASK),
-    "shift": ("Shift", MOD_SHIFT, X_SHIFT_MASK),
-    "meta": ("Meta", MOD_WIN, X_MOD4_MASK),
+
+class _Modifier(NamedTuple):
+    name: str  # for display and storage
+    win: int  # RegisterHotKey flag
+    x11: int  # XGrabKey mask
+    portal: str  # XDG shortcuts specification (GlobalShortcuts portal)
+
+
+# In display order.
+_MODIFIERS: dict[str, _Modifier] = {
+    "ctrl": _Modifier("Ctrl", MOD_CONTROL, X_CONTROL_MASK, "CTRL"),
+    "alt": _Modifier("Alt", MOD_ALT, X_MOD1_MASK, "ALT"),
+    "shift": _Modifier("Shift", MOD_SHIFT, X_SHIFT_MASK, "SHIFT"),
+    "meta": _Modifier("Meta", MOD_WIN, X_MOD4_MASK, "LOGO"),
 }
 _MODIFIER_ALIASES = {"control": "ctrl", "win": "meta", "super": "meta"}
 
 # The X11 modifiers a hotkey can use; other bits (lock keys, mouse buttons)
 # are ignored when matching a key press.
-X_RELEVANT_MASK = sum(x11 for _, _, x11 in _MODIFIERS.values())
+X_RELEVANT_MASK = sum(m.x11 for m in _MODIFIERS.values())
 # Lock keys whose state must not affect whether a hotkey matches.
 X_IGNORED_MASKS = (0, X_LOCK_MASK, X_MOD2_MASK, X_LOCK_MASK | X_MOD2_MASK)
 
-# Portable key name -> (Windows virtual-key code, X11 keysym name)
+# Portable key name -> (Windows virtual-key code, X11 keysym name). The
+# keysym name is also how the GlobalShortcuts portal names the key.
 _SPECIAL_KEYS: dict[str, tuple[int, str]] = {
     "Backspace": (0x08, "BackSpace"),
     "Tab": (0x09, "Tab"),
@@ -94,8 +104,11 @@ class Hotkey:
     key: str
 
     def __str__(self) -> str:
-        mods = [name for m, (name, _, _) in _MODIFIERS.items() if m in self.modifiers]
-        return "+".join([*mods, self.key])
+        return "+".join([*self._modifiers("name"), self.key])
+
+    def _modifiers(self, column: str) -> list:
+        """One column of _MODIFIERS for this hotkey's modifiers, in order."""
+        return [getattr(m, column) for key, m in _MODIFIERS.items() if key in self.modifiers]
 
     @property
     def vk(self) -> int:
@@ -143,9 +156,14 @@ def parse(text: str) -> Hotkey:
 
 def win_modifiers(hotkey: Hotkey) -> int:
     """RegisterHotKey flags for the hotkey's modifiers."""
-    return MOD_NOREPEAT | sum(_MODIFIERS[m][1] for m in hotkey.modifiers)
+    return MOD_NOREPEAT | sum(hotkey._modifiers("win"))
 
 
 def x11_modifiers(hotkey: Hotkey) -> int:
     """XGrabKey mask for the hotkey's modifiers."""
-    return sum(_MODIFIERS[m][2] for m in hotkey.modifiers)
+    return sum(hotkey._modifiers("x11"))
+
+
+def portal_trigger(hotkey: Hotkey) -> str:
+    """The hotkey as the GlobalShortcuts portal takes it, e.g. "CTRL+ALT+a"."""
+    return "+".join([*hotkey._modifiers("portal"), hotkey.keysym_name])

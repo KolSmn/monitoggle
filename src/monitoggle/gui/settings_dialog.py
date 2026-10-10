@@ -44,7 +44,7 @@ from .command_dialog import CommandDialog
 from .commands import cli_command_line, validate_command, validate_names
 from .monitor_state import MonitorState
 from .config import Settings, Shortcut
-from .hotkey_listeners import unsupported_reason
+from .hotkey_listeners import unsupported_reason, uses_portal
 from .i18n import tr
 
 COL_KEYS, COL_COMMAND, COL_CHOOSE, COL_COPY = range(4)
@@ -148,6 +148,16 @@ class SettingsDialog(QDialog):
             )
             warn.setWordWrap(True)
             box_layout.addWidget(warn)
+        elif uses_portal():
+            note = QLabel(
+                tr(
+                    "<b>Note:</b> Your desktop asks you to confirm the shortcuts "
+                    "and may assign other keys; its keyboard settings show the "
+                    "ones in use."
+                )
+            )
+            note.setWordWrap(True)
+            box_layout.addWidget(note)
 
         self.table = QTableWidget(0, 4)
         self.table.setHorizontalHeaderLabels([tr("Shortcut"), tr("Command"), "", ""])

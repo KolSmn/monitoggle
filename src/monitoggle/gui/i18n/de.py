@@ -267,10 +267,24 @@ MESSAGES: dict[str, str] = {
     "X11 did not respond": "X11 hat nicht geantwortet",
     "cannot open the X display": "X-Display kann nicht geöffnet werden",
     "key not on this keyboard": "Taste gibt es auf dieser Tastatur nicht",
-    "Global shortcuts are not available on Wayland. Bind the CLI command "
-    "in your desktop's keyboard settings instead.": (
-        "Globale Tastenkürzel sind unter Wayland nicht verfügbar. Hinterlege "
-        "stattdessen den CLI-Befehl in den Tastatureinstellungen deines Desktops."
+    "This Wayland desktop doesn't offer global shortcuts to apps. Bind the "
+    "CLI command in your desktop's keyboard settings instead.": (
+        "Dieser Wayland-Desktop bietet Anwendungen keine globalen Tastenkürzel "
+        "an. Hinterlege stattdessen den CLI-Befehl in den Tastatureinstellungen "
+        "deines Desktops."
+    ),
+    "cannot connect to the session bus": "keine Verbindung zum Sitzungsbus",
+    "the desktop's shortcut service failed": "der Tastenkürzel-Dienst des Desktops ist fehlgeschlagen",
+    "the desktop did not start a shortcut session": (
+        "der Desktop hat keine Tastenkürzel-Sitzung gestartet"
+    ),
+    "declined in the desktop's dialog": "im Dialog des Desktops abgelehnt",
+    "not assigned by the desktop": "vom Desktop nicht zugewiesen",
+    "<b>Note:</b> Your desktop asks you to confirm the shortcuts and may "
+    "assign other keys; its keyboard settings show the ones in use.": (
+        "<b>Hinweis:</b> Dein Desktop fragt nach, ob er die Tastenkürzel "
+        "übernehmen soll, und vergibt eventuell andere Tasten; welche gelten, "
+        "zeigen seine Tastatureinstellungen."
     ),
     "No X11 display found.": "Kein X11-Display gefunden.",
     "python-xlib is not installed.": "python-xlib ist nicht installiert.",

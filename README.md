@@ -73,9 +73,13 @@ monitor's own power button show up too.
   the status is updated.
 
 Global shortcuts work on Windows and on Linux with X11. **Wayland**
-doesn't let apps grab global keys; there, use *Copy CLI* next to a
-shortcut and bind that command in your desktop's keyboard settings (see
-[Shortcuts without the tray app](#shortcuts-without-the-tray-app)).
+doesn't let apps grab global keys themselves; there the tray app asks the
+desktop to bind them (the *GlobalShortcuts portal*, offered by KDE Plasma
+5.27+ and recent GNOME versions). The desktop shows a dialog to confirm
+the shortcuts and may assign other keys; its keyboard settings show the
+ones in use. On a Wayland desktop without the portal, use *Copy CLI* next
+to a shortcut and bind that command in your desktop's keyboard settings
+(see [Shortcuts without the tray app](#shortcuts-without-the-tray-app)).
 
 ### Waking monitors before lock, logoff, shutdown and sleep
 
@@ -185,8 +189,8 @@ monitor.
 
 The easiest way to get keyboard shortcuts is the tray app (see
 [Settings](#settings)). If you'd rather not run it, or global shortcuts
-aren't available (Wayland), bind `monitoggle-cli` commands in another
-tool. The effect is the same; each key press runs the command-line tool
+aren't available (Wayland without the GlobalShortcuts portal), bind
+`monitoggle-cli` commands in another tool. The effect is the same; each key press runs the command-line tool
 once.
 
 **Windows: PowerToys.** Keyboard Manager → Remap a shortcut → Add
@@ -284,9 +288,9 @@ screensaver's `ActiveChanged(false)` on Linux; the app then checks the
 monitors after 2 and 8 seconds, since they need a moment before they
 answer DDC/CI again.
 
-**Global shortcuts** use `RegisterHotKey` on Windows and `XGrabKey` on
-X11. They run their command in-process, exactly like the command-line
-tool would.
+**Global shortcuts** use `RegisterHotKey` on Windows, `XGrabKey` on
+X11 and the XDG GlobalShortcuts portal (D-Bus) on Wayland. They run
+their command in-process, exactly like the command-line tool would.
 
 **Start at login** adds a `Run` registry entry (Windows) or
 `~/.config/autostart/monitoggle.desktop` (Linux) that starts whatever is
