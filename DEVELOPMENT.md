@@ -42,6 +42,22 @@ executables and publishes them as a GitHub release, with the full
 `CHANGELOG.md` as release notes. `download_latest_release.py` downloads
 the files of the latest (or a given) release into `dist/`.
 
+**Changelog check:** a final release tag (`v1.4.0`, not `v1.4.0.dev1`)
+needs a `## [v1.4.0] - YYYY-MM-DD` section in the tagged commit's
+`CHANGELOG.md`; `check_changelog.py` checks it. CI runs it on every tag
+push and builds no release without the entry. Locally, a git hook runs
+it before a tag is created, so `git tag v1.4.0` fails without the entry.
+Enable it once per clone:
+
+```
+git config core.hooksPath .githooks
+```
+
+The hook needs `python` (or `python3`) on PATH. It also checks tags
+fetched from GitHub, so a final tag pushed without an entry would make
+`git fetch` fail too; skip the hook for once with
+`git -c core.hooksPath=.git/hooks fetch`.
+
 **Dev releases** (tags like `v1.2.0.dev3`) are cleaned up automatically
 daily and after every release: per version only the newest dev release
 is kept, and none once the final `v1.2.0` exists; their tags are deleted
@@ -68,7 +84,7 @@ locally:
 ```
 uv export --all-extras --all-groups --no-emit-project --format requirements-txt -o requirements-audit.txt
 uvx pip-audit -r requirements-audit.txt --disable-pip --require-hashes
-uvx bandit -c pyproject.toml -r src build.py download_latest_release.py cleanup_dev_releases.py
+uvx bandit -c pyproject.toml -r src build.py download_latest_release.py cleanup_dev_releases.py check_changelog.py
 ```
 
 ## Translations

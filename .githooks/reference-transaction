@@ -1,0 +1,28 @@
+#!/bin/sh
+# Refuses to create a final release tag (vX.Y.Z) whose commit has no
+# CHANGELOG.md entry for it; see check_changelog.py. Enable once per clone:
+#     git config core.hooksPath .githooks
+#
+# Git runs this for every ref update (commits, branches, fetches), so all
+# but tag creations are let through here, without starting Python.
+
+[ "$1" = "prepared" ] || exit 0  # only this phase can abort the update
+
+if command -v python >/dev/null 2>&1; then
+    py=python
+else
+    py=python3
+fi
+
+while read -r old new ref; do
+    case "$ref" in
+        refs/tags/*) ;;
+        *) continue ;;
+    esac
+    case "$new" in
+        *[!0]*) ;;
+        *) continue ;;  # all zeros: the tag is deleted
+    esac
+    "$py" check_changelog.py "${ref#refs/tags/}" --rev "$new" </dev/null || exit 1
+done
+exit 0
