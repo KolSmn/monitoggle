@@ -62,10 +62,10 @@ monitor's own power button show up too.
   combination, then pick what it does with **Choose…**: an action (each
   with an explanation), the monitors, and where needed the input source
   or options. The list then says in words what each shortcut does, e.g.
-  "Switch Left to work (DP1)". If you prefer typing, switch *Enter
+  "Switch Left to laptop (DP1)". If you prefer typing, switch *Enter
   commands* to **Text**: each shortcut is then a
   [command-line](#command-line) call without the program name, e.g.
-  `toggle 2` or `cycle-input Left --sources work,private`, with presets
+  `toggle 2` or `cycle-input Left --sources laptop,desktop`, with presets
   for your monitors. Both edit the same commands, so you can switch any
   time. Shortcuts need a modifier (Ctrl, Alt, Shift or Meta =
   Windows/Super key), except F-keys, Pause and Print.
@@ -143,17 +143,17 @@ flips each one, `on` turns all on.
 
 ### Input sources
 
-Switching inputs is handy when one monitor is connected to two computers,
-e.g. a work laptop and a private PC.
+Switching inputs is handy when one monitor is connected to multiple
+devices.
 
 - `inputs` shows each monitor's current input and the inputs it offers.
 - `input HDMI1 2` switches monitor 2 to HDMI1.
 - `cycle-input 2` switches monitor 2 to its next active input.
   `cycle-input all` does that for every monitor.
-- `cycle-input 2 --sources work,private` cycles only through the given
+- `cycle-input 2 --sources laptop,desktop` cycles only through the given
   inputs, i.e. toggles between the two. This makes a good shortcut.
 
-An input **source** is given by its name from the settings (e.g. `work`),
+An input **source** is given by its name from the settings (e.g. `laptop`),
 its standard name (`DP1`, `DP2`, `HDMI1`, `HDMI2`, `DVI1`, … - case
 doesn't matter), or its number, e.g. `0x1b`. Some monitors use
 non-standard numbers for USB-C and further ports; `inputs` shows them as
@@ -171,14 +171,14 @@ computer or with the monitor's buttons.
 ### Names
 
 In *Settings → Monitors*, each monitor can get a name (e.g. `Left`), and
-each of its inputs a name (e.g. `work`, `private`) and an *Active*
+each of its inputs a name (e.g. `laptop`, `desktop`) and an *Active*
 checkbox. Names work in every command instead of numbers, in shortcuts
-as well as on the command line: `toggle Left`, `input work Left`.
+as well as on the command line: `toggle Left`, `input laptop Left`.
 `toggle 1` keeps working.
 
-Input names belong to their monitor, so `work` can be DP1 on one monitor
-and HDMI1 on another; `input work all` switches each monitor to its own
-`work` input.
+Input names belong to their monitor, so `laptop` can be DP1 on one monitor
+and HDMI1 on another; `input laptop all` switches each monitor to its own
+`laptop` input.
 
 Names must be a single word without commas. Monitor names can't be a
 number, `primary` or `all`; input names can't be a standard input name
@@ -309,8 +309,8 @@ can be edited by hand:
 
 ```json
 {"monitors": {"\\\\.\\DISPLAY2": {"name": "Left", "inputs": {
-  "DP1": {"name": "work", "enabled": true},
-  "HDMI1": {"name": "private", "enabled": true},
+  "DP1": {"name": "laptop", "enabled": true},
+  "HDMI1": {"name": "desktop", "enabled": true},
   "HDMI2": {"name": "", "enabled": false}}}}}
 ```
 

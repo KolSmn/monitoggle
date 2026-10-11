@@ -31,7 +31,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - Windows executables carry a version resource: the file properties (*Details*) show the product name, a description, the version (numeric file version, full git version as product version) and the copyright. The tray app's description "MoniToggle" is also what Windows shows as the source of its notifications (previously the executable's name).
 
-- Guided shortcut commands: in the settings, *Choose…* puts a shortcut's command together from lists (action with an explanation, monitors, input source, options) with a live preview, so the command syntax doesn't have to be known; the shortcut list then describes each command in words (e.g. "Switch Left to work (DP1)"). The previous text entry stays available: *Enter commands* switches between *Guided* (default) and *Text*, both editing the same commands.
+- Guided shortcut commands: in the settings, *Choose…* puts a shortcut's command together from lists (action with an explanation, monitors, input source, options) with a live preview, so the command syntax doesn't have to be known; the shortcut list then describes each command in words (e.g. "Switch Left to laptop (DP1)"). The previous text entry stays available: *Enter commands* switches between *Guided* (default) and *Text*, both editing the same commands.
 
 ## [v1.0.0] - 2026-09-29
 
@@ -44,7 +44,7 @@ First public release.
 - Safety check: `off` and `toggle` refuse to leave no monitor on and change nothing then; `--force` skips it.
 - Input source switching (VCP 0x60): `inputs` shows each monitor's current and supported inputs, `input <source> <monitor>...` switches to one (standard name such as `HDMI1`/`DP1`, or a number such as `0x1b` for non-standard ports), `cycle-input <monitor>... [--sources ...]` switches to the next active input (with two sources: toggles between them).
 - Monitor references: number, device name (`\\.\DISPLAYn` on Windows, output name such as `DP-2` on Linux), a user-given name, `primary`, or `all` for every monitor.
-- Names for monitors and their input sources (e.g. monitor `Left` with inputs `work` and `private`), usable in every command next to numbers (`toggle Left`, `input work Left`); input names are per monitor. Inputs can be set inactive per monitor: they are left out of the tray menu and of `cycle-input`. Stored in `monitors.json` in the config folder.
+- Names for monitors and their input sources (e.g. monitor `Left` with inputs `laptop` and `desktop`), usable in every command next to numbers (`toggle Left`, `input laptop Left`); input names are per monitor. Inputs can be set inactive per monitor: they are left out of the tray menu and of `cycle-input`. Stored in `monitors.json` in the config folder.
 
 ### Tray app
 
